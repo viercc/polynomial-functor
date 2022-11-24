@@ -1,0 +1,6 @@
+packages: polynomial-functor.cabal
+
+source-repository-package
+    type: git
+    location: /home/koji/Haskell/not-owned/typelits-witnesses
+    tag: 3666579b9522cfd639c4627692ce834fd031e521
