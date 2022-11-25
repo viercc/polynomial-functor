@@ -348,6 +348,13 @@ instance (Polynomial f, Polynomial g) => Polynomial (f :.: g) where
       case fromPoly (P tagPowG rep) of
         Pow repF -> Comp1 $ fromPoly (P tagF repF)
 
+-- | @fromPoly = toPoly = id@
+instance HasSNat tag => Polynomial (Poly tag) where
+  type Tag (Poly tag) = tag
+
+  fromPoly = id
+  toPoly = id
+
 ---- Generic definitions ----
 instance (Generic1 f, Polynomial (Rep1 f)) => Polynomial (Generically1 f) where
   type Tag (Generically1 f) = Tag (Rep1 f)
