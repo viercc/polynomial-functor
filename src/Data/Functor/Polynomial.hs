@@ -13,6 +13,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE DerivingVia #-}
 
 module Data.Functor.Polynomial(
   HasSNat(..),
@@ -351,3 +352,12 @@ instance (Generic1 f, Polynomial (Rep1 f)) => Polynomial (Generically1 f) where
 
   toPoly (Generically1 fx) = toPoly (from1 fx)
   fromPoly p = Generically1 $ to1 (fromPoly p)
+
+deriving via (Generically1 Maybe)
+  instance Polynomial Maybe
+
+deriving via (Generically1 (Either a))
+  instance Polynomial (Either a)
+
+deriving via (Generically1 ((,) a))
+  instance Polynomial ((,) a)
