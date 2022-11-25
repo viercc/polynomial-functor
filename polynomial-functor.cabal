@@ -56,4 +56,5 @@ test-suite polynomial-functor-test
 
     build-depends:
         base ^>=4.17.0.0,
+        finitary,
         polynomial-functor
