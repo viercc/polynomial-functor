@@ -267,6 +267,11 @@ instance Polynomial f => Polynomial (M1 i c f) where
   fromPoly = M1 . fromPoly
   toPoly = toPoly . unM1
 
+instance Polynomial f => Polynomial (Rec1 f) where
+  type Tag (Rec1 f) = Tag f
+  fromPoly = Rec1 . fromPoly
+  toPoly = toPoly . unRec1
+
 instance Polynomial Par1 where
   type Tag Par1 = TagFn 1
 
