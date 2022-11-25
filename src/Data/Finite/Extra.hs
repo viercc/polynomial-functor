@@ -48,7 +48,7 @@ viewSNat n = case sOne %<=? n of
   NLE ltWit _ -> case lessThan1is0 n ltWit of Refl -> ViewZero
 
 lessThan1is0 :: p n -> ((1 <=? n) :~: 'False) -> n :~: 0
-lessThan1is0 = unsafeCoerce
+lessThan1is0 _ _ = unsafeCoerce (Refl :: 0 :~: 0)
 
 pattern Zero :: () => (n ~ 0) => SNat n
 pattern Zero <- (viewSNat -> ViewZero)
