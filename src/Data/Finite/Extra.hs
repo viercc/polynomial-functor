@@ -14,15 +14,12 @@ module Data.Finite.Extra
 
     -- * Finite
     absurdFinite,
-    weakenS,
-    shiftS,
-    shiftSRight,
-    strengthenWithS,
+    combineSumS,
+    separateSumS
   )
 where
 
 import Data.Finite
-import Data.Finite.Internal
 import Data.Type.Equality ((:~:) (..))
 import GHC.TypeLits.Compare hiding ((%<=?))
 import GHC.TypeLits.Witnesses
@@ -65,20 +62,14 @@ pattern Succ m <- (viewSNat -> ViewSucc m)
 
 {-# COMPLETE Zero, Succ #-}
 
+-- | @'Finite' 0@ is morally an uninhabited type like @Void@.
 absurdFinite :: Finite 0 -> a
-absurdFinite x = x `seq` error ("absurdFinite: x = " ++ show x)
+absurdFinite x = error ("absurdFinite: x = " ++ show x)
 
-weakenS :: SNat n -> SNat k -> Finite n -> Finite (n + k)
-weakenS _ _ (Finite n) = Finite n
+-- | 'combineSum' but uses 'SNat' instead of 'KnownNat'
+combineSumS :: SNat l -> SNat r -> Either (Finite l) (Finite r) -> Finite (l + r)
+combineSumS SNat _ = combineSum
 
-shiftS :: SNat n -> SNat k -> Finite n -> Finite (n + k)
-shiftS _ k@SNat i = shiftProxy k i
-
-shiftSRight :: SNat n -> proxy k -> Finite k -> Finite (n + k)
-shiftSRight n _ i = case n of SNat -> shiftProxy n i
-
-strengthenWithS :: forall n. SNat (n + 1) -> Finite (n + 1) -> Maybe (SNat n, Finite n)
-strengthenWithS n i = case sPred n of
-  n'@SNat -> case strengthen i of
-    Nothing -> Nothing
-    Just i' -> Just (n', i')
+-- | 'separateSum' but uses 'SNat' instead of 'KnownNat'
+separateSumS :: SNat l -> SNat r -> Finite (l + r) -> Either (Finite l) (Finite r)
+separateSumS SNat _ = separateSum
