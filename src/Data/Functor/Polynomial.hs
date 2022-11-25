@@ -20,6 +20,8 @@ module Data.Functor.Polynomial(
   Poly(..),
   Polynomial(..),
 
+  Pow(..),
+
   TagFn, TagV(), TagK(..), TagSum(..), TagMul(..), TagPow(..), TagComp(..)
 ) where
 
