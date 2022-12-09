@@ -14,6 +14,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module Data.Functor.Polynomial(
   HasSNat(..),
@@ -22,7 +23,7 @@ module Data.Functor.Polynomial(
 
   Pow(..),
 
-  TagFn, TagV(), TagK(..), TagSum(..), TagMul(..), TagPow(..), TagComp(..)
+  TagFn, TagV(), TagK(..), TagSum, TagMul(..), TagPow(..), TagComp(..)
 ) where
 
 import Data.Functor.Identity(Identity(..))
@@ -33,10 +34,12 @@ import Data.Finite
 import Data.Finite.Extra (SNat (..), absurdFinite, combineSumS, separateSumS)
 import Data.Kind (Type)
 
-import Data.Type.Equality ((:~:)(..), TestEquality(..))
+import Data.Type.Equality ((:~:)(..))
 import GHC.Generics
 import GHC.TypeLits.Witnesses
 import GHC.TypeNats
+
+import Data.GADT.Compare (GEq(..))
 
 import qualified Data.Vector.Sized as SV
 
@@ -80,13 +83,13 @@ instance HasSNat tag => Traversable (Poly tag) where
 traverseFiniteFn :: (Applicative g) => SNat n -> (a -> g b) -> (Finite n -> a) -> g (Finite n -> b)
 traverseFiniteFn SNat f fromN = fmap SV.index $ traverse f (SV.generate fromN)
 
-instance (Eq x, TestEquality tag, HasSNat tag) => Eq (Poly tag x) where
+instance (Eq x, GEq tag, HasSNat tag) => Eq (Poly tag x) where
   (==) = eq1
 
-instance (TestEquality tag, HasSNat tag) => Eq1 (Poly tag) where
+instance (GEq tag, HasSNat tag) => Eq1 (Poly tag) where
   liftEq eq = eqP
     where
-      eqP (P tag rep) (P tag' rep') = case testEquality tag tag' of
+      eqP (P tag rep) (P tag' rep') = case geq tag tag' of
         Nothing -> False
         Just Refl -> all (\i -> rep i `eq` rep' i) (withKnownNat (toSNat tag) finites)
 
@@ -125,8 +128,8 @@ data TagV (n :: Nat)
 instance HasSNat TagV where
   toSNat v = case v of {}
 
-instance TestEquality TagV where
-  testEquality v = case v of {}
+instance GEq TagV where
+  geq v = case v of {}
 
 -- | @TagK c n@ represents a constant function:
 --   
@@ -142,8 +145,8 @@ deriving instance Eq c => Eq (TagK c n)
 instance HasSNat (TagK c) where
   toSNat (TagK _) = SNat
 
-instance Eq c => TestEquality (TagK c) where
-  testEquality (TagK c) (TagK c')
+instance Eq c => GEq (TagK c) where
+  geq (TagK c) (TagK c')
       | c == c' = Just Refl
       | otherwise = Nothing
 
@@ -157,17 +160,11 @@ instance Eq c => TestEquality (TagK c) where
 --   > either α1 α2 :: Either U V -> Nat
 --
 --   This is the tag of @f :+: g@, when @t1, t2@ is the tag of @f, g@ respectively.
-type TagSum :: (Nat -> Type) -> (Nat -> Type) -> Nat -> Type
-data TagSum t1 t2 n = TagLeft (t1 n) | TagRight (t2 n)
+type TagSum = (:+:)
 
 instance (HasSNat t1, HasSNat t2) => HasSNat (TagSum t1 t2) where
-  toSNat (TagLeft t1) = toSNat t1
-  toSNat (TagRight t2) = toSNat t2
-
-instance (TestEquality t1, TestEquality t2) => TestEquality (TagSum t1 t2) where
-  testEquality (TagLeft t1) (TagLeft t1') = fmap (\Refl -> Refl) $ testEquality t1 t1'
-  testEquality (TagRight t2) (TagRight t2') = fmap (\Refl -> Refl) $ testEquality t2 t2'
-  testEquality _ _ = Nothing
+  toSNat (L1 t1) = toSNat t1
+  toSNat (R1 t2) = toSNat t2
 
 -- |  When @t1, t2@ represents a function @α1, α2@ respectively,
 --   
@@ -186,10 +183,10 @@ data TagMul f g x where
 instance (HasSNat t1, HasSNat t2) => HasSNat (TagMul t1 t2) where
   toSNat (TagMul t1 t2) = toSNat t1 %+ toSNat t2
 
-instance (TestEquality t1, TestEquality t2) => TestEquality (TagMul t1 t2) where
-  testEquality (TagMul t1 t2) (TagMul t1' t2') =
-    do Refl <- testEquality t1 t1'
-       Refl <- testEquality t2 t2'
+instance (GEq t1, GEq t2) => GEq (TagMul t1 t2) where
+  geq (TagMul t1 t2) (TagMul t1' t2') =
+    do Refl <- geq t1 t1'
+       Refl <- geq t2 t2'
        pure Refl
 
 -- | When @t@ represents @(U,α :: U -> Nat)@,
@@ -207,16 +204,16 @@ instance (HasSNat t) => HasSNat (TagPow n t) where
   toSNat PowZeroTag = Zero
   toSNat (PowSuccTag l r) = toSNat l %+ toSNat r
 
-instance TestEquality t => TestEquality (TagPow n t) where
-  testEquality t t' = fmap snd (testEqualityPow t t')
+instance GEq t => GEq (TagPow n t) where
+  geq t t' = fmap snd (geqPow t t')
 
-testEqualityPow :: TestEquality t => TagPow n t xs -> TagPow n' t xs' -> Maybe (n :~: n', xs :~: xs')
-testEqualityPow PowZeroTag PowZeroTag = Just (Refl, Refl)
-testEqualityPow (PowSuccTag ts t) (PowSuccTag ts' t') =
-  do Refl <- testEquality t t'
-     (Refl, Refl) <- testEqualityPow ts ts'
+geqPow :: GEq t => TagPow n t xs -> TagPow n' t xs' -> Maybe (n :~: n', xs :~: xs')
+geqPow PowZeroTag PowZeroTag = Just (Refl, Refl)
+geqPow (PowSuccTag ts t) (PowSuccTag ts' t') =
+  do Refl <- geq t t'
+     (Refl, Refl) <- geqPow ts ts'
      pure (Refl, Refl)
-testEqualityPow _ _ = Nothing
+geqPow _ _ = Nothing
 
 -- | When @t, u@ is the tag of @f, g@ respectively,
 --   @TagComp t u@ is the tag of @f :.: g@.
@@ -226,10 +223,10 @@ data TagComp t u n where
 instance (HasSNat t, HasSNat u) => HasSNat (TagComp t u) where
   toSNat (TagComp t pu) = withKnownNat (toSNat t) (toSNat pu)
 
-instance (TestEquality t, TestEquality u) => TestEquality (TagComp t u) where
-  testEquality (TagComp t pu) (TagComp t' pu') =
-    do Refl <- testEquality t t'
-       Refl <- testEquality pu pu'
+instance (GEq t, GEq u) => GEq (TagComp t u) where
+  geq (TagComp t pu) (TagComp t' pu') =
+    do Refl <- geq t t'
+       Refl <- geq pu pu'
        pure Refl
 
 ---- Instances ----
@@ -285,12 +282,12 @@ instance (Polynomial f, Polynomial g) => Polynomial (f :+: g) where
   type Tag (f :+: g) = TagSum (Tag f) (Tag g)
 
   toPoly (L1 fx) = case toPoly fx of
-    P tag rep -> P (TagLeft tag) rep
+    P tag rep -> P (L1 tag) rep
   toPoly (R1 gx) = case toPoly gx of
-    P tag rep -> P (TagRight tag) rep
+    P tag rep -> P (R1 tag) rep
 
-  fromPoly (P (TagLeft tag) rep) = L1 (fromPoly (P tag rep))
-  fromPoly (P (TagRight tag) rep) = R1 (fromPoly (P tag rep))
+  fromPoly (P (L1 tag) rep) = L1 (fromPoly (P tag rep))
+  fromPoly (P (R1 tag) rep) = R1 (fromPoly (P tag rep))
 
 instance (Polynomial f, Polynomial g) => Polynomial (f :*: g) where
   type Tag (f :*: g) = TagMul (Tag f) (Tag g)
