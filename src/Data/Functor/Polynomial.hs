@@ -31,7 +31,7 @@ import Data.Functor.Classes ( Eq1(..), eq1 )
 
 import Data.Finitary
 import Data.Finite
-import Data.Finite.Extra (SNat (..), absurdFinite, combineSumS, separateSumS)
+import Data.Finite.Extra (SNat (..), sPred, absurdFinite, combineSumS, separateSumS)
 import Data.Kind (Type)
 
 import Data.Type.Equality ((:~:)(..))
@@ -198,7 +198,7 @@ instance (GEq t1, GEq t2) => GEq (TagMul t1 t2) where
 --   This is the tag of @Pow n f@ when @t@ is the tag of @f@.
 data TagPow n t xs where
   PowZeroTag :: TagPow 0 t 0
-  PowSuccTag :: KnownNat n => TagPow n t xs -> t x -> TagPow (n + 1) t (xs + x)
+  PowSuccTag :: TagPow n t xs -> t x -> TagPow (n + 1) t (xs + x)
 
 instance (HasSNat t) => HasSNat (TagPow n t) where
   toSNat PowZeroTag = Zero
@@ -324,11 +324,15 @@ instance (KnownNat n, Polynomial f) => Polynomial (Pow n f) where
   fromPoly :: forall x. Poly (TagPow n (Tag f)) x -> Pow n f x
   fromPoly (P tag rep) = case tag of
     PowZeroTag -> Pow absurdFinite
-    PowSuccTag tagFs tagF ->
-      let combine = combineSumS (toSNat tagFs) (toSNat tagF)
-          Pow e' = fromPoly (P tagFs (rep . combine . Left))
-          f      = fromPoly (P tagF  (rep . combine . Right))
-       in Pow (maybe f e' . strengthen)
+    PowSuccTag tagFs tagF -> case predByTagPow tagFs (SNat @n) of
+      SNat ->
+        let combine = combineSumS (toSNat tagFs) (toSNat tagF)
+            Pow e' = fromPoly (P tagFs (rep . combine . Left))
+            f      = fromPoly (P tagF  (rep . combine . Right))
+        in Pow (maybe f e' . strengthen)
+
+predByTagPow :: forall n n' dummy f x. (n ~ n' + 1) => dummy n' f x -> SNat n -> SNat n'
+predByTagPow _ sn = sPred sn
 
 instance (Polynomial f, Polynomial g) => Polynomial (f :.: g) where
   type Tag (f :.: g) = TagComp (Tag f) (Tag g)
