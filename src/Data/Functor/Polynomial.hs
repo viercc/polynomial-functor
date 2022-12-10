@@ -40,8 +40,8 @@ import GHC.TypeNats
 
 import Data.Finitary
 import Data.Finite
-import Data.Finite.Extra (SNat (..), sPred, absurdFinite, boringFinite, combineSumS, separateSumS)
-import GHC.TypeLits.Witnesses ( SNat(..), fromSNat, withKnownNat )
+import Data.Finite.Extra (sPred, absurdFinite, boringFinite, combineSumS, separateSumS)
+import GHC.TypeLits.Witnesses (fromSNat, withKnownNat)
 import qualified Data.Vector.Sized as SV
 
 import Data.Functor.Polynomial.Tag

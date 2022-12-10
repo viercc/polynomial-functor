@@ -41,6 +41,7 @@ module Data.Functor.Polynomial.Tag(
   TagComp(..),
 
   -- * Reexports
+  SNat(SNat, Succ, Zero),
   GShow(..), GEq(..), GCompare(..), GOrdering(..)
 ) where
 
@@ -51,7 +52,7 @@ import GHC.Generics ( type (:+:)(..) )
 
 import GHC.TypeNats
 import GHC.TypeLits.Witnesses ( SNat(..), withKnownNat, (%+) )
-import Data.Finite.Extra (SNat (Zero) )
+import Data.Finite.Extra (SNat (Succ, Zero) )
 
 import Data.GADT.Show
 import Data.GADT.Compare
