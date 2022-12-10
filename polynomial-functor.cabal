@@ -29,15 +29,14 @@ build-type:         Simple
 extra-doc-files:    CHANGELOG.md
 
 -- Extra source files to be distributed with the package, such as examples, or a tutorial module.
--- extra-source-files:
+extra-source-files: README.md
 
 common warnings
     ghc-options: -Wall
 
 library
     import:           warnings
-    exposed-modules:  Data.Functor.Polynomial
-    other-modules:    Data.Finite.Extra
+    exposed-modules:  Data.Functor.Polynomial, Data.Functor.Polynomial.Tag, Data.Finite.Extra, Data.GADT.Compare.Extra
     build-depends:    base ^>=4.17.0.0
                     , finite-typelits
                     , typelits-witnesses

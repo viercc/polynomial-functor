@@ -1,11 +1,10 @@
-{-# OPTIONS_GHC -fplugin GHC.TypeLits.Normalise #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ViewPatterns #-}
-
+{-# OPTIONS_GHC -fplugin GHC.TypeLits.Normalise #-}
 module Data.Finite.Extra
   ( -- * SNat
     SNat (Zero, Succ),

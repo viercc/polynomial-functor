@@ -13,21 +13,20 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE EmptyDataDeriving #-}
 
 module Data.Functor.Polynomial(
-  HasSNat(..),
+  module Data.Functor.Polynomial.Tag,
+
   Poly(..),
   Polynomial(..),
-
-  Pow(..),
-
-  TagFn, TagV(), TagK(..), TagSum, TagMul(..), TagPow(..), TagComp(..)
+  Pow(..)
 ) where
 
 import Data.Functor.Identity(Identity(..))
-import Data.Functor.Classes ( Eq1(..), eq1 )
+import Data.Functor.Classes ( Eq1(..), eq1, Ord1(..), compare1 )
 
 import Data.Finitary
 import Data.Finite
@@ -36,23 +35,13 @@ import Data.Kind (Type)
 
 import Data.Type.Equality ((:~:)(..))
 import GHC.Generics
-import GHC.TypeLits.Witnesses
+import GHC.TypeLits.Witnesses ( SNat(..), fromSNat, withKnownNat )
 import GHC.TypeNats
-
-import Data.GADT.Compare (GEq(..))
 
 import qualified Data.Vector.Sized as SV
 
--- | @'HasSNat' t@ indicates @t n@ contains sufficient data
---   to construct the @'SNat' n@ value.
---
---   Such @t@ can be seen as a type of inverse images of a function @α :: U -> Nat@ on some type @U@.
---   In other words, the type @t n@ corresponds to @α⁻¹(n)@, a subset of @U@ such that @x ∈ α⁻¹(n)@ if and only if @α x == n@.
-class HasSNat t where
-  toSNat :: t n -> SNat n
-
-instance HasSNat SNat where
-  toSNat = id
+import Data.GADT.Compare ( GEq(..), GCompare(..), GOrdering(..) )
+import Data.Functor.Polynomial.Tag
 
 -- | Uniformly represented polynomial functor.
 --
@@ -93,7 +82,25 @@ instance (GEq tag, HasSNat tag) => Eq1 (Poly tag) where
         Nothing -> False
         Just Refl -> all (\i -> rep i `eq` rep' i) (withKnownNat (toSNat tag) finites)
 
+-- | **Does not preserve** the order through 'toPoly' and 'fromPoly'
+instance (Ord x, GCompare tag, HasSNat tag) => Ord (Poly tag x) where
+  compare = compare1
+
+-- | **Does not preserve** the order through 'toPoly' and 'fromPoly'
+instance (GCompare tag, HasSNat tag) => Ord1 (Poly tag) where
+  liftCompare cmpX = cmpP
+    where
+      cmpP (P tag rep) (P tag' rep') = case gcompare tag tag' of
+        GLT -> LT
+        GEQ -> foldr (\i r -> rep i `cmpX` rep' i <> r) EQ $ withKnownNat (toSNat tag) finites
+        GGT -> GT
+
 -- | A class for 'Functor' which can be represented as 'Poly'.
+--   
+--   'toPoly' and 'fromPoly' are isomorphisms.
+--   
+--   > toPoly . fromPoly = id
+--   > fromPoly . toPoly = id
 class (Functor f, HasSNat (Tag f)) => Polynomial f where
   type Tag f :: Nat -> Type
 
@@ -105,129 +112,6 @@ instance Finitary r => Polynomial ((->) r) where
 
   toPoly f = P Refl (f . fromFinite)
   fromPoly (P Refl f) r = f (toFinite r)
-
--- | @TagFn n@ represents just a natural number @n@. In other words, function @α@ from a singleton set pointing to @n@:
---
---   > α = const n :: () -> Nat
---
---   This is the tag of @(->) r@ functor, where @r@ is 'Finitary' type of cardinality @n@.
---   It's also the tag of @U1@ and @Par1@,
---   by being isomorphic to @(->) Void@ and @(->) ()@ respectively.
-type TagFn :: Nat -> Nat -> Type
-type TagFn = (:~:)
-
--- | Instance for 'TagFn'
-instance KnownNat n => HasSNat ((:~:) n) where
-  toSNat Refl = SNat
-
--- | @TagV n@ is empty type for any @n@. It's the inverse images of the empty function @α = absurd :: ∅ -> Nat@. 
---
---   This is the tag of 'V1'.
-data TagV (n :: Nat)
-
-instance HasSNat TagV where
-  toSNat v = case v of {}
-
-instance GEq TagV where
-  geq v = case v of {}
-
--- | @TagK c n@ represents a constant function:
---   
---   > α = const 0 :: c -> Nat
---   
---   This is the tag of 'K1'.
-type TagK :: Type -> Nat -> Type
-data TagK c n where
-  TagK :: c -> TagK c 0
-
-deriving instance Eq c => Eq (TagK c n)
-
-instance HasSNat (TagK c) where
-  toSNat (TagK _) = SNat
-
-instance Eq c => GEq (TagK c) where
-  geq (TagK c) (TagK c')
-      | c == c' = Just Refl
-      | otherwise = Nothing
-
--- | When @t1, t2@ represents a function @α1, α2@ respectively,
---   
---   > α1 :: U -> Nat
---   > α2 :: V -> Nat
---   
---   @TagSum t1 t2@ represents @either α1 α2@.
---   
---   > either α1 α2 :: Either U V -> Nat
---
---   This is the tag of @f :+: g@, when @t1, t2@ is the tag of @f, g@ respectively.
-type TagSum = (:+:)
-
-instance (HasSNat t1, HasSNat t2) => HasSNat (TagSum t1 t2) where
-  toSNat (L1 t1) = toSNat t1
-  toSNat (R1 t2) = toSNat t2
-
--- |  When @t1, t2@ represents a function @α1, α2@ respectively,
---   
---   > α1 :: U -> Nat
---   > α2 :: V -> Nat
---   
---   @TagMul t1 t2@ represents the function @α@ on the direct product of @U, V@:
---   
---   > α :: (U,V) -> Nat
---   > α(u,v) = α u + β v
---   
---   This is the tag of @f :*: g@ when @t1, t2@ is the tag of @f, g@ respectively.
-data TagMul f g x where
-  TagMul :: !(f x) -> !(g y) -> TagMul f g (x + y)
-
-instance (HasSNat t1, HasSNat t2) => HasSNat (TagMul t1 t2) where
-  toSNat (TagMul t1 t2) = toSNat t1 %+ toSNat t2
-
-instance (GEq t1, GEq t2) => GEq (TagMul t1 t2) where
-  geq (TagMul t1 t2) (TagMul t1' t2') =
-    do Refl <- geq t1 t1'
-       Refl <- geq t2 t2'
-       pure Refl
-
--- | When @t@ represents @(U,α :: U -> Nat)@,
---   @TagPow n t xs@ represents @α^n@:
---
---   > α^n :: U^n -> Nat
---   > α^n(u1, u2, ..., u_n) = α u1 + α u2 + ... + α u_n
---
---   This is the tag of @Pow n f@ when @t@ is the tag of @f@.
-data TagPow n t xs where
-  PowZeroTag :: TagPow 0 t 0
-  PowSuccTag :: TagPow n t xs -> t x -> TagPow (n + 1) t (xs + x)
-
-instance (HasSNat t) => HasSNat (TagPow n t) where
-  toSNat PowZeroTag = Zero
-  toSNat (PowSuccTag l r) = toSNat l %+ toSNat r
-
-instance GEq t => GEq (TagPow n t) where
-  geq t t' = fmap snd (geqPow t t')
-
-geqPow :: GEq t => TagPow n t xs -> TagPow n' t xs' -> Maybe (n :~: n', xs :~: xs')
-geqPow PowZeroTag PowZeroTag = Just (Refl, Refl)
-geqPow (PowSuccTag ts t) (PowSuccTag ts' t') =
-  do Refl <- geq t t'
-     (Refl, Refl) <- geqPow ts ts'
-     pure (Refl, Refl)
-geqPow _ _ = Nothing
-
--- | When @t, u@ is the tag of @f, g@ respectively,
---   @TagComp t u@ is the tag of @f :.: g@.
-data TagComp t u n where
-  TagComp :: t a -> TagPow a u n -> TagComp t u n
-
-instance (HasSNat t, HasSNat u) => HasSNat (TagComp t u) where
-  toSNat (TagComp t pu) = withKnownNat (toSNat t) (toSNat pu)
-
-instance (GEq t, GEq u) => GEq (TagComp t u) where
-  geq (TagComp t pu) (TagComp t' pu') =
-    do Refl <- geq t t'
-       Refl <- geq pu pu'
-       pure Refl
 
 ---- Instances ----
 instance Polynomial Identity where
