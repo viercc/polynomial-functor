@@ -40,7 +40,6 @@ import GHC.TypeNats
 
 import qualified Data.Vector.Sized as SV
 
-import Data.GADT.Compare ( GEq(..), GCompare(..), GOrdering(..) )
 import Data.Functor.Polynomial.Tag
 
 -- | Uniformly represented polynomial functor.
