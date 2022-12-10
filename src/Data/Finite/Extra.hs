@@ -12,7 +12,7 @@ module Data.Finite.Extra
     sSucc,
 
     -- * Finite
-    absurdFinite,
+    absurdFinite, boringFinite,
     combineSumS,
     separateSumS
   )
@@ -64,6 +64,10 @@ pattern Succ m <- (viewSNat -> ViewSucc m)
 -- | @'Finite' 0@ is morally an uninhabited type like @Void@.
 absurdFinite :: Finite 0 -> a
 absurdFinite x = error ("absurdFinite: x = " ++ show x)
+
+-- | @'Finite' 1@ is a singleton type
+boringFinite :: Finite 1
+boringFinite = minBound
 
 -- | 'combineSum' but uses 'SNat' instead of 'KnownNat'
 combineSumS :: SNat l -> SNat r -> Either (Finite l) (Finite r) -> Finite (l + r)
