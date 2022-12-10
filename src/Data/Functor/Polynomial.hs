@@ -246,18 +246,18 @@ instance (KnownNat n, Polynomial f) => Polynomial (Pow n f) where
 
   toPoly :: forall x. Pow n f x -> Poly (TagPow n (Tag f)) x
   toPoly (Pow e) = case SNat @n of
-    Zero -> P PowZeroTag absurdFinite
+    Zero -> P ZeroTag absurdFinite
     Succ SNat ->
       let fs = Pow (e . weaken)
           f = e (maxBound @(Finite n))
       in case (toPoly fs, toPoly f) of
         (P tagFs repFs, P tagF repF) ->
-          P (PowSuccTag tagFs tagF) (either repFs repF . separateSumS (toSNat tagFs) (toSNat tagF))
+          P (tagFs :+| tagF) (either repFs repF . separateSumS (toSNat tagFs) (toSNat tagF))
 
   fromPoly :: forall x. Poly (TagPow n (Tag f)) x -> Pow n f x
   fromPoly (P tag rep) = case tag of
-    PowZeroTag -> Pow absurdFinite
-    PowSuccTag tagFs tagF -> case predByTagPow tagFs (SNat @n) of
+    ZeroTag -> Pow absurdFinite
+    tagFs :+| tagF -> case predByTagPow tagFs (SNat @n) of
       SNat ->
         let combine = combineSumS (toSNat tagFs) (toSNat tagF)
             Pow e' = fromPoly (P tagFs (rep . combine . Left))

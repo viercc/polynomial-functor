@@ -241,18 +241,18 @@ instance (GCompare t1, GCompare t2) => GCompare (TagMul t1 t2) where
 --
 --   This is the tag of @'Data.Functor.Polynomial.Pow' n f@ when @t@ is the tag of @f@.
 data TagPow n t xs where
-  PowZeroTag :: TagPow 0 t 0
-  PowSuccTag :: TagPow n t xs -> t x -> TagPow (n + 1) t (xs + x)
+  ZeroTag :: TagPow 0 t 0
+  (:+|)   :: TagPow n t xs -> t x -> TagPow (n + 1) t (xs + x)
 
-infixl 6 `PowSuccTag`
+infixl 6 :+|
 
 deriving instance (forall n. Show (t n)) => Show (TagPow m t xs)
 instance (forall n. Show (t n)) => GShow (TagPow m t) where
   gshowsPrec = showsPrec
 
 instance (HasSNat t) => HasSNat (TagPow n t) where
-  toSNat PowZeroTag = Zero
-  toSNat (PowSuccTag l r) = toSNat l %+ toSNat r
+  toSNat ZeroTag = Zero
+  toSNat (l :+| r) = toSNat l %+ toSNat r
 
 instance GEq t => GEq (TagPow n t) where
   geq t t' = fmap snd (geqPow t t')
@@ -261,8 +261,8 @@ instance GEq t => Eq (TagPow n t xs) where
   (==) = defaultEq
 
 geqPow :: GEq t => TagPow n t xs -> TagPow n' t xs' -> Maybe (n :~: n', xs :~: xs')
-geqPow PowZeroTag PowZeroTag = Just (Refl, Refl)
-geqPow (PowSuccTag ts t) (PowSuccTag ts' t') =
+geqPow ZeroTag ZeroTag = Just (Refl, Refl)
+geqPow (ts :+| t) (ts' :+| t') =
   do Refl <- geq t t'
      (Refl, Refl) <- geqPow ts ts'
      pure (Refl, Refl)
@@ -275,10 +275,10 @@ instance GCompare t => Ord (TagPow n t xs) where
   compare = defaultCompare
 
 gcomparePow :: GCompare t => TagPow n t xs -> TagPow n' t xs' -> GOrdering '(n,xs) '(n',xs')
-gcomparePow PowZeroTag PowZeroTag = GEQ
-gcomparePow PowZeroTag (PowSuccTag _ _) = GLT
-gcomparePow (PowSuccTag _ _) PowZeroTag = GGT
-gcomparePow (PowSuccTag ts t) (PowSuccTag ts' t') = gcomparePow ts ts' >>? gcompare t t' >>? GEQ
+gcomparePow ZeroTag ZeroTag = GEQ
+gcomparePow ZeroTag (_ :+| _) = GLT
+gcomparePow (_ :+| _) ZeroTag = GGT
+gcomparePow (ts :+| t) (ts' :+| t') = gcomparePow ts ts' >>? gcompare t t' >>? GEQ
 
 -- | When @t, u@ is the tag of @f, g@ respectively,
 --   @TagComp t u@ is the tag of @f :.: g@.
