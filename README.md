@@ -1,4 +1,4 @@
-# polynomia-functor
+# polynomial-functor
 
 This package provides a way to express, construct, and inspect polynomial functors in Haskell.
 The first example is `Maybe`.
