@@ -8,6 +8,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE EmptyDataDeriving #-}
 {-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 {- | This module provides a way to represent \"tag\" of various polynomial data types. For example,
 a GADT 'TagMaybe' represents a functor of the same shape of 'Maybe'.
@@ -51,8 +52,7 @@ import Data.Type.Equality ((:~:)(..))
 import GHC.Generics ( type (:+:)(..) )
 
 import GHC.TypeNats
-import GHC.TypeLits.Witnesses ( SNat(..), withKnownNat, (%+) )
-import Data.Finite.Extra (SNat (Succ, Zero) )
+import GHC.TypeLits.Witnesses ( SNat(), pattern SNat, pattern Succ, pattern Zero, withKnownNat, (%+) )
 
 import Data.GADT.Show
 import Data.GADT.Compare

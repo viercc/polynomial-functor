@@ -16,7 +16,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE EmptyDataDeriving #-}
-
+{-# OPTIONS_GHC -fplugin GHC.TypeLits.Normalise #-}
 module Data.Functor.Polynomial(
   module Data.Functor.Polynomial.Tag,
 
@@ -40,8 +40,8 @@ import GHC.TypeNats
 
 import Data.Finitary
 import Data.Finite
-import Data.Finite.Extra (sPred, absurdFinite, boringFinite, combineSumS, separateSumS)
-import GHC.TypeLits.Witnesses (fromSNat, withKnownNat)
+import Data.Finite.Extra (absurdFinite, boringFinite, combineSumS, separateSumS)
+import GHC.TypeLits.Witnesses (fromSNat, withKnownNat, (%-))
 import qualified Data.Vector.Sized as SV
 
 import Data.Functor.Polynomial.Tag
@@ -265,7 +265,7 @@ instance (KnownNat n, Polynomial f) => Polynomial (Pow n f) where
         in Pow (maybe f e' . strengthen)
 
 predByTagPow :: forall n n' dummy f x. (n ~ n' + 1) => dummy n' f x -> SNat n -> SNat n'
-predByTagPow _ sn = sPred sn
+predByTagPow _ sn = sn %- (SNat :: SNat 1)
 
 instance (Polynomial f, Polynomial g) => Polynomial (f :.: g) where
   type Tag (f :.: g) = TagComp (Tag f) (Tag g)

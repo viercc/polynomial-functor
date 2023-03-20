@@ -39,7 +39,7 @@ library
     exposed-modules:  Data.Functor.Polynomial, Data.Functor.Polynomial.Tag, Data.Finite.Extra, Data.GADT.Compare.Extra
     build-depends:    base ^>=4.17.0.0
                     , finite-typelits
-                    , typelits-witnesses
+                    , typelits-witnesses >= 99.0 
                     , finitary
                     , ghc-typelits-natnormalise
                     , vector-sized
