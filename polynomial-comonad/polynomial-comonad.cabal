@@ -18,10 +18,10 @@ common warnings
 
 library
     import:           warnings
-    exposed-modules:  PolyComonad, BabySingleton
+    exposed-modules:  PolyComonad, BabySingleton, Flow
     -- other-modules:
     -- other-extensions:
-    build-depends:    base ^>=4.18.0.0, comonad
+    build-depends:    base ^>=4.18.0.0, comonad, kan-extensions
     hs-source-dirs:   src
     default-language: GHC2021
 
