@@ -111,3 +111,18 @@ fromH (H1 r0) = MkPoly STrue \_ tt -> case tt of
 fromH (H2 r1 r0) = MkPoly SFalse \_ fz -> case fz of
     ImpId -> r1
     ImpFT -> r0
+
+-- * Indiscrete category <-> Store comonad
+
+data Indiscrete k (a :: k) (b :: k) = Indiscrete
+    deriving (Show, Eq)
+
+instance Category (Indiscrete k) where
+    id = Indiscrete
+    _ . _ = Indiscrete
+
+indiscreteCat :: Demote k => (Val k -> x, Val k) -> Poly (Indiscrete k) x
+indiscreteCat (peek, pos) = toSing pos \sPos -> MkPoly sPos \sPos' _ -> peek (fromSing sPos')
+
+runIndiscreteCat :: Demote k => Poly (Indiscrete k) x -> (Val k -> x, Val k)
+runIndiscreteCat (MkPoly sp body) = (\v -> toSing v \sv -> body sv Indiscrete, fromSing sp)
