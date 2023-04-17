@@ -10,11 +10,9 @@ import BabySingleton
 import PolyComonad
 import Control.Monad.Co
 
--- | Conceptually:
--- 
---  > Flow (cat :: k -> k -> Type) = Π(a :: k). ∑(b :: k). cat a b
+-- | > Flow cat = Π(a :: k). ∑(b :: k). cat a b
 --
---  In words, a flow on a category @fl :: Flow cat@ is a family of
+--  In words, @fl :: Flow cat@ is a collection of
 --  arrows in @cat@ such that for each object @a@, there's exactly one
 --  arrow starting from @a@ in it.
 newtype Flow (cat :: k -> k -> Type) = MkFlow
