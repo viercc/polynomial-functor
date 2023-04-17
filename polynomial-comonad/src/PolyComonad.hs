@@ -10,6 +10,7 @@ https://arxiv.org/abs/1604.01187
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE MonoLocalBinds #-}
+{-# LANGUAGE DerivingStrategies #-}
 module PolyComonad where
 
 import Prelude hiding (id, (.))
@@ -41,12 +42,29 @@ instance Category cat => Comonad (Poly (cat :: k -> k -> Type)) where
 type Discrete :: k -> k -> Type
 type Discrete = (:~:)
 
--- | @Poly |k| r ~ (k, r)@
+-- | @Poly |k| r ~ (k, r) ~ Env k r@
 discreteCat :: Demote k => (Val k, r) -> Poly (Discrete @k) r
 discreteCat (x, r) = toSing x \sx -> MkPoly sx \_ Refl -> r
 
 runDiscreteCat :: Demote k => Poly (Discrete @k) r -> (Val k, r)
 runDiscreteCat (MkPoly sx k) = (fromSing sx, k sx Refl)
+
+-- * The other trivial example: one-object category
+
+newtype OneObject m (a :: ()) (b :: ()) = OneObject m
+    deriving stock (Show)
+    deriving newtype (Eq, Ord, Semigroup, Monoid)
+
+instance Monoid m => Category (OneObject m) where
+    id = OneObject mempty
+    OneObject m1 . OneObject m2 = OneObject (m1 <> m2)
+
+-- | @Poly (OneObject m) r ~ (m -> r) ~ Traced m r@
+oneObjectCat :: (m -> r) -> Poly (OneObject m) r
+oneObjectCat f = MkPoly SU \SU (OneObject m) -> f m
+
+runOneObjectCat :: Poly (OneObject m) r -> m -> r
+runOneObjectCat (MkPoly _ f) = f SU . OneObject
 
 -- * A small but non-trivial example
 

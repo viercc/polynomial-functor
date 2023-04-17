@@ -20,6 +20,19 @@ singEq a b = isJust (testEquality a b)
 class ISing k (x :: k) where
     sing :: Sing k x
 
+-- * Unit
+
+data SUnit (u :: ()) where SU :: SUnit '()
+
+type instance Sing () = SUnit
+
+instance Demote () where
+    type Val () = ()
+    toSing _ body = body SU
+    fromSing SU = ()
+
+instance ISing () '() where sing = SU
+
 -- * Nat
 
 type instance Sing Nat = SNat
