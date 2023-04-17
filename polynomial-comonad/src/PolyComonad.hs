@@ -1,3 +1,11 @@
+{-
+
+Implementation of
+"Directed Containers as Categories," D. Ahman and T. Uustalu, EPTCS 207, 2016, pp. 89-98
+
+https://arxiv.org/abs/1604.01187
+
+-}
 {-# LANGUAGE BlockArguments #-}
 module PolyComonad where
 
