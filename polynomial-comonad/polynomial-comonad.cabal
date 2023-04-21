@@ -21,16 +21,26 @@ library
     exposed-modules:
       Control.Category.Indiscrete,
       Control.Category.OneObject,
+      Control.Category.Dual,
+      Control.Category.NatOrd,
       PolyComonad,
       PolyComonad.Boolean,
       PolyComonad.Env,
       PolyComonad.Store,
       PolyComonad.Traced,
+      PolyComonad.NonEmpty,
       BabySingleton,
       Flow
     -- other-modules:
     -- other-extensions:
-    build-depends:    base ^>=4.18.0.0, comonad, kan-extensions
+    build-depends:
+      base ^>=4.18.0.0,
+      comonad,
+      kan-extensions,
+      finite-typelits,
+      typelits-witnesses >= 99,
+      ghc-typelits-natnormalise,
+      ghc-typelits-knownnat
     hs-source-dirs:   src
     default-language: GHC2021
 
