@@ -18,7 +18,16 @@ common warnings
 
 library
     import:           warnings
-    exposed-modules:  PolyComonad, BabySingleton, Flow
+    exposed-modules:
+      Control.Category.Indiscrete,
+      Control.Category.OneObject,
+      PolyComonad,
+      PolyComonad.Boolean,
+      PolyComonad.Env,
+      PolyComonad.Store,
+      PolyComonad.Traced,
+      BabySingleton,
+      Flow
     -- other-modules:
     -- other-extensions:
     build-depends:    base ^>=4.18.0.0, comonad, kan-extensions
