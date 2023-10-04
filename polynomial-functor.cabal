@@ -37,13 +37,14 @@ common warnings
 library
     import:           warnings
     exposed-modules:  Data.Functor.Polynomial, Data.Functor.Polynomial.Tag, Data.Finite.Extra, Data.GADT.Compare.Extra
-    build-depends:    base ^>=4.17.0.0
-                    , finite-typelits
-                    , typelits-witnesses >= 99.0 
-                    , finitary
-                    , ghc-typelits-natnormalise
-                    , vector-sized
-                    , some
+    build-depends: 
+        base >= 4.17 && < 4.19
+      , finite-typelits
+      , typelits-witnesses >= 99.0 
+      , finitary
+      , ghc-typelits-natnormalise
+      , vector-sized
+      , some
     hs-source-dirs:   src
     default-language: Haskell2010
 
@@ -55,6 +56,6 @@ test-suite polynomial-functor-test
     main-is:          Main.hs
 
     build-depends:
-        base ^>=4.17.0.0,
+        base >= 4.17 && < 4.19,
         finitary,
         polynomial-functor
