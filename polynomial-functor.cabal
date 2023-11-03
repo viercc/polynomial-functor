@@ -45,6 +45,8 @@ library
       , ghc-typelits-natnormalise
       , vector-sized
       , some
+      , kan-extensions
+      , reflection
     hs-source-dirs:   src
     default-language: Haskell2010
 
