@@ -11,7 +11,6 @@
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE DerivingVia #-}
@@ -41,7 +40,7 @@ import GHC.TypeNats
 import Data.Finitary
 import Data.Finite
 import Data.Finite.Extra (absurdFinite, boringFinite, combineSumS, separateSumS)
-import GHC.TypeLits.Witnesses (fromSNat, withKnownNat, (%-))
+import GHC.TypeLits.Witnesses
 import qualified Data.Vector.Sized as SV
 
 import Data.Functor.Polynomial.Tag
@@ -73,7 +72,7 @@ instance HasSNat tag => Traversable (Poly tag) where
   traverse f (P tag rep) = P tag <$> traverseFiniteFn (toSNat tag) f rep
 
 traverseFiniteFn :: (Applicative g) => SNat n -> (a -> g b) -> (Finite n -> a) -> g (Finite n -> b)
-traverseFiniteFn SNat f fromN = fmap SV.index $ traverse f (SV.generate fromN)
+traverseFiniteFn sn f fromN = withKnownNat sn $ SV.index <$> traverse f (SV.generate fromN)
 
 instance (Eq x, GEq tag, HasSNat tag) => Eq (Poly tag x) where
   (==) = eq1
@@ -237,50 +236,57 @@ instance (Polynomial f, Polynomial g) => Polynomial (Product f g) where
       fromGenerics (fx :*: gx) = Pair fx gx
 
 -- | @Pow n f = f :*: f :*: ...(n)... :*: f@
-newtype Pow n f x = Pow (Finite n -> f x)
+data Pow n f x where
+  Pow0 :: Pow 0 f x
+  PowSnoc :: Pow n f x -> f x -> Pow (n + 1) f x
 
 deriving instance Functor f => Functor (Pow n f)
 
-instance (KnownNat n, Polynomial f) => Polynomial (Pow n f) where
+functionToPow :: SNat n -> (Finite n -> f x) -> Pow n f x
+functionToPow sn f = case sn of
+  Zero -> Pow0
+  Succ sn' -> PowSnoc (functionToPow sn' (f . weaken)) (withKnownNat sn (f maxBound))
+
+powToFunction :: Pow n f x -> Finite n -> f x
+powToFunction fs = powToFunction' fs . getFinite
+
+powToFunction' :: Pow n f x -> Integer -> f x
+powToFunction' Pow0 k = error $ "Out of bounds:" ++ show k
+powToFunction' (PowSnoc fs f) k = case k of
+  0 -> f
+  _ -> powToFunction' fs (pred k)
+
+instance (Polynomial f) => Polynomial (Pow n f) where
   type Tag (Pow n f) = TagPow n (Tag f)
 
   toPoly :: forall x. Pow n f x -> Poly (TagPow n (Tag f)) x
-  toPoly (Pow e) = case SNat @n of
-    Zero -> P ZeroTag absurdFinite
-    Succ SNat ->
-      let fs = Pow (e . weaken)
-          f = e (maxBound @(Finite n))
-      in case (toPoly fs, toPoly f) of
-        (P tagFs repFs, P tagF repF) ->
-          P (tagFs :+| tagF) (either repFs repF . separateSumS (toSNat tagFs) (toSNat tagF))
+  toPoly Pow0 = P ZeroTag absurdFinite
+  toPoly (PowSnoc fs f) = case (toPoly fs, toPoly f) of
+      (P tagFs repFs, P tagF repF) ->
+        P (tagFs :+| tagF) (either repFs repF . separateSumS (toSNat tagFs) (toSNat tagF))
 
   fromPoly :: forall x. Poly (TagPow n (Tag f)) x -> Pow n f x
   fromPoly (P tag rep) = case tag of
-    ZeroTag -> Pow absurdFinite
-    tagFs :+| tagF -> case predByTagPow tagFs (SNat @n) of
-      SNat ->
+    ZeroTag -> Pow0
+    tagFs :+| tagF ->
         let combine = combineSumS (toSNat tagFs) (toSNat tagF)
-            Pow e' = fromPoly (P tagFs (rep . combine . Left))
-            f      = fromPoly (P tagF  (rep . combine . Right))
-        in Pow (maybe f e' . strengthen)
-
-predByTagPow :: forall n n' dummy f x. (n ~ n' + 1) => dummy n' f x -> SNat n -> SNat n'
-predByTagPow _ sn = sn %- (SNat :: SNat 1)
+            fs = fromPoly (P tagFs (rep . combine . Left))
+            f  = fromPoly (P tagF  (rep . combine . Right))
+        in PowSnoc fs f
 
 instance (Polynomial f, Polynomial g) => Polynomial (f :.: g) where
   type Tag (f :.: g) = TagComp (Tag f) (Tag g)
 
   toPoly :: forall x. (f :.: g) x -> Poly (TagComp (Tag f) (Tag g)) x
   toPoly (Comp1 fgy) = case toPoly fgy of
-    P tagF repF -> withKnownNat (toSNat tagF) $
-      case toPoly (Pow repF) of
+    P tagF repF ->
+      case toPoly (functionToPow (toSNat tagF) repF) of
         P tagPowG repPow -> P (TagComp tagF tagPowG) repPow
 
   fromPoly :: forall x. Poly (TagComp (Tag f) (Tag g)) x -> (f :.: g) x
   fromPoly (P (TagComp tagF tagPowG) rep) =
-    withKnownNat (toSNat tagF) $
-      case fromPoly (P tagPowG rep) of
-        Pow repF -> Comp1 $ fromPoly (P tagF repF)
+    let repF = powToFunction $ fromPoly (P tagPowG rep)
+    in  Comp1 $ fromPoly (P tagF repF)
 
 
 instance (Polynomial f, Polynomial g) => Polynomial (Compose f g) where
