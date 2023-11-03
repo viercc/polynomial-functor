@@ -9,6 +9,7 @@
 {-# LANGUAGE EmptyDataDeriving #-}
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE NoStarIsType #-}
 
 {- | This module provides a way to represent \"tag\" of various polynomial data types. For example,
 a GADT 'TagMaybe' represents a functor of the same shape of 'Maybe'.
@@ -40,6 +41,7 @@ module Data.Functor.Polynomial.Tag(
   TagFn, TagV(), TagK(..), TagSum, TagMul(..),
   TagPow(..), geqPow, gcomparePow,
   TagComp(..),
+  TagDay(..),
 
   -- * Reexports
   SNat(SNat, Succ, Zero),
@@ -51,15 +53,18 @@ import Data.Kind (Type)
 import Data.Type.Equality ((:~:)(..))
 import GHC.Generics ( type (:+:)(..) )
 
-import GHC.TypeNats
-import GHC.TypeLits.Witnesses ( SNat(), pattern SNat, pattern Succ, pattern Zero, withKnownNat, (%+) )
+import GHC.TypeNats.Compat (Nat, SNat, pattern SNat, withKnownNat, type (+), type (*), )
+import GHC.TypeLits.Witnesses ( pattern Succ, pattern Zero, (%+), (%*) )
 
+import Data.GADT.HasSNat
 import Data.GADT.Show
 import Data.GADT.Compare
     ( defaultCompare, defaultEq, GCompare(..), GEq(..), GOrdering(..) )
 import Data.GADT.Compare.Extra ( fromOrdering, (>>?) )
 
--- | An instance @'HasSNat' t@ indicates @t n@ contains sufficient data
+-- $note
+--
+--   An instance @'HasSNat' t@ indicates @t n@ contains sufficient data
 --   to construct the @'SNat' n@ value.
 --
 --   For example, the following GADT defines a type with @HasSNat@ instance.
@@ -81,12 +86,7 @@ import Data.GADT.Compare.Extra ( fromOrdering, (>>?) )
 --   > α A' = 0
 --   > α B' = 1
 --   > α (C' False) = α (C' True) = 2
-class HasSNat t where
-  toSNat :: t n -> SNat n
 
--- | Represents @(Nat, id :: Nat -> Nat)
-instance HasSNat SNat where
-  toSNat = id
 
 -- | Tag of 'Maybe'.
 data TagMaybe n where
@@ -127,9 +127,6 @@ instance GShow TagMaybe where
 --   > TagFn 0   -- Tag of Proxy
 --   > TagFn 1   -- Tag of Identity
 type TagFn = (:~:)
-
-instance KnownNat n => HasSNat (TagFn n) where
-  toSNat Refl = SNat
 
 -- | @TagV n@ is an empty type for any @n@. It represents @(∅, α = absurd :: ∅ -> Nat)@. 
 --
@@ -193,10 +190,6 @@ instance Show c => GShow (TagK c) where
 --
 --   This is the tag of @f :+: g@, when @t1, t2@ is the tag of @f, g@ respectively.
 type TagSum = (:+:)
-
-instance (HasSNat t1, HasSNat t2) => HasSNat (TagSum t1 t2) where
-  toSNat (L1 t1) = toSNat t1
-  toSNat (R1 t2) = toSNat t2
 
 -- |  When @t1, t2@ represents @(U, α1)@ and @(V,α2)@ respectively,
 --   
@@ -307,3 +300,31 @@ instance (GCompare t, GCompare u) => GCompare (TagComp t u) where
 
 instance (GCompare t, GCompare u) => Ord (TagComp t u n) where
   compare = defaultCompare
+
+type TagDay :: (Nat -> Type) -> (Nat -> Type) -> Nat -> Type
+data TagDay t u n where
+  TagDay :: t n -> u m -> TagDay t u (n * m)
+
+instance (HasSNat t, HasSNat u) => HasSNat (TagDay t u) where
+  toSNat (TagDay t u) = toSNat t %* toSNat u
+
+deriving instance (forall n. Show (t n), forall n. Show (u n)) => Show (TagDay t u m)
+
+instance (forall n. Show (t n), forall n. Show (u n)) => GShow (TagDay t u) where
+  gshowsPrec = showsPrec
+
+instance (GEq t, GEq u) => GEq (TagDay t u) where
+  TagDay t u `geq` TagDay t' u' =
+    do Refl <- geq t t'
+       Refl <- geq u u'
+       pure Refl
+
+instance (GEq t, GEq u) => Eq (TagDay t u n) where
+  (==) = defaultEq
+
+instance (GCompare t, GCompare u) => GCompare (TagDay t u) where
+  gcompare (TagDay t u) (TagDay t' u') = gcompare t t' >>? gcompare u u' >>? GEQ
+
+instance (GCompare t, GCompare u) => Ord (TagDay t u m) where
+  compare = defaultCompare
+
