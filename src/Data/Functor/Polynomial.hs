@@ -311,7 +311,7 @@ instance HasSNat tag => Polynomial (Poly tag) where
   toPoly = id
 
 ---- Generic definitions ----
-instance (Generic1 f, Polynomial (Rep1 f)) => Polynomial (Generically1 f) where
+instance (Generic1 f, HasSNat (Tag (Rep1 f)), Polynomial (Rep1 f)) => Polynomial (Generically1 f) where
   type Tag (Generically1 f) = Tag (Rep1 f)
 
   toPoly (Generically1 fx) = toPoly (from1 fx)
