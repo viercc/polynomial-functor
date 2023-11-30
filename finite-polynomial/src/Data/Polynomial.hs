@@ -213,6 +213,8 @@ class SZero (k :: Type) where
     type TZero k :: k
     sZero :: Sing k (TZero k)
 
+infixl 6 +
+infixl 6 %+
 class SPlus (k :: Type) where
     type (+) (x :: k) (y :: k) :: k
     (%+) :: Sing k x -> Sing k y -> Sing k (x + y)
@@ -221,6 +223,8 @@ class SOne (k :: Type) where
     type TOne k :: k
     sOne :: Sing k (TOne k)
 
+infixl 7 *
+infixl 7 %*
 class STimes (k :: Type) where
     type (*) (x :: k) (y :: k) :: k
     (%*) :: Sing k x -> Sing k y -> Sing k (x * y)
@@ -229,6 +233,8 @@ class SId (k :: Type) where
     type TId k :: k
     sId :: Sing k (TId k)
 
+infixl 8 <<
+infixl 8 %<<
 class SCompose (k :: Type) where
     type (<<) (x :: k) (y :: k) :: k
     (%<<) :: Sing k x -> Sing k y -> Sing k (x << y)
