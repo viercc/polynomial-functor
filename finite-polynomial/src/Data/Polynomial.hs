@@ -11,6 +11,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE StandaloneDeriving #-}
 module Data.Polynomial(
 
   -- * Formal polynomials with natural-number (ℕ) coefficients
@@ -23,17 +24,16 @@ module Data.Polynomial(
   SZero(..), SPlus(..), SOne(..), STimes(..),
   SId(..), SCompose(..),
 
+  SPoly(..), SPoly₀(..),
+  
   EvalPoly, sEvalPoly,
-  EvalPoly₀, sEvalPoly₀,
-
-  -- * Re-export
-  Sing(..)
+  EvalPoly₀, sEvalPoly₀
 ) where
 
 import Numeric.Natural (Natural)
 import Data.Semigroup (Max(..))
 
-import Data.Singleton
+import Data.Singletons
 import Data.Kind (Type)
 
 -- * Formal polynomials with natural-number (ℕ) coefficients
@@ -51,7 +51,7 @@ import Data.Kind (Type)
 -- 
 -- * @U :: Poly@ represents a constant polynomial @{U}(x) = 1@
 -- * @S p :: Poly@ represents an addition of constant @1@ to the polynomial @{p}@.
--- * @T p :: Poly@ represents multiplying @p@ by the parameter of the polynomial.
+-- * @T p :: Poly@ represents @{p}@ multiplied by the parameter of the polynomial.
 -- 
 -- Any __nonzero__ polynomial with coefficients in ℕ can be represented using 'Poly'.
 -- In fact, they are /uniquely/ represented as a 'Poly' value.
@@ -180,30 +180,47 @@ instance Times Poly₀ where
 
 -- * Singletons
 
-data instance Sing Poly a where
-    SingU :: Sing Poly 'U
-    SingS :: Sing Poly p -> Sing Poly ('S p)
-    SingT :: Sing Poly p -> Sing Poly ('T p)
+data SPoly a where
+    SingU :: SPoly 'U
+    SingS :: SPoly p -> SPoly ('S p)
+    SingT :: SPoly p -> SPoly ('T p)
 
-data instance Sing Poly₀ a where
-    SingZ :: Sing Poly₀ 'Z
-    SingNZ :: Sing Poly p -> Sing Poly₀ ('NZ p)
+type instance Sing = SPoly
+deriving instance Show (SPoly p)
 
 instance SingKind Poly where
+    type Demote Poly = Poly
+
     fromSing SingU = U
     fromSing (SingS p) = S (fromSing p)
     fromSing (SingT p) = T (fromSing p)
 
     toSing U = SomeSing SingU
-    toSing (S p) = withSing p (SomeSing . SingS)
-    toSing (T p) = withSing p (SomeSing . SingT)
+    toSing (S p) = withSomeSing p (SomeSing . SingS)
+    toSing (T p) = withSomeSing p (SomeSing . SingT)
+
+instance SingI 'U where sing = SingU
+instance SingI p => SingI ('S p) where sing = SingS sing
+instance SingI p => SingI ('T p) where sing = SingT sing
+
+data SPoly₀ a where
+    SingZ :: SPoly₀ 'Z
+    SingNZ :: SPoly p -> SPoly₀ ('NZ p)
+
+type instance Sing = SPoly₀
+deriving instance Show (SPoly₀ p)
 
 instance SingKind Poly₀ where
+    type Demote Poly₀ = Poly₀
+
     fromSing SingZ = Z
     fromSing (SingNZ p) = NZ (fromSing p)
 
     toSing Z = SomeSing SingZ
-    toSing (NZ p) = withSing p (SomeSing . SingNZ)
+    toSing (NZ p) = withSomeSing p (SomeSing . SingNZ)
+
+instance SingI 'Z where sing = SingZ
+instance SingI p => SingI ('NZ p) where sing = SingNZ sing
 
 --------
 
@@ -211,33 +228,33 @@ instance SingKind Poly₀ where
 
 class SZero (k :: Type) where
     type TZero k :: k
-    sZero :: Sing k (TZero k)
+    sZero :: Sing (TZero k)
 
 infixl 6 +
 infixl 6 %+
 class SPlus (k :: Type) where
     type (+) (x :: k) (y :: k) :: k
-    (%+) :: Sing k x -> Sing k y -> Sing k (x + y)
+    (%+) :: forall (x :: k) (y :: k). Sing x -> Sing y -> Sing (x + y)
 
 class SOne (k :: Type) where
     type TOne k :: k
-    sOne :: Sing k (TOne k)
+    sOne :: Sing (TOne k)
 
 infixl 7 *
 infixl 7 %*
 class STimes (k :: Type) where
     type (*) (x :: k) (y :: k) :: k
-    (%*) :: Sing k x -> Sing k y -> Sing k (x * y)
+    (%*) :: forall (x :: k) (y :: k). Sing x -> Sing y -> Sing (x * y)
 
 class SId (k :: Type) where
     type TId k :: k
-    sId :: Sing k (TId k)
+    sId :: Sing (TId k)
 
 infixl 8 <<
 infixl 8 %<<
 class SCompose (k :: Type) where
     type (<<) (x :: k) (y :: k) :: k
-    (%<<) :: Sing k x -> Sing k y -> Sing k (x << y)
+    (%<<) :: forall (x :: k) (y :: k). Sing x -> Sing y -> Sing (x << y)
 
 
 
@@ -349,7 +366,7 @@ instance SCompose Poly₀ where
     SingNZ (SingT _) %<< SingZ = SingZ
     SingNZ x %<< SingNZ y = SingNZ (x %<< y)
 
-sConstantPart :: Sing Poly x -> Sing Poly (ConstantPart' x)
+sConstantPart :: SPoly x -> SPoly (ConstantPart' x)
 sConstantPart SingU = SingS SingU
 sConstantPart (SingS x) = SingS (sConstantPart x)
 sConstantPart (SingT _) = SingU
@@ -359,7 +376,7 @@ type family EvalPoly (x :: Poly) k (arg :: k) :: k where
     EvalPoly (S p) k arg = TOne k + EvalPoly p k arg
     EvalPoly (T p) k arg = arg * EvalPoly p k arg
 
-sEvalPoly :: (SOne k, SPlus k, STimes k) => Sing Poly x -> Sing k arg -> Sing k (EvalPoly x k arg)
+sEvalPoly :: (SOne k, SPlus k, STimes k) => SPoly x -> Sing arg -> Sing (EvalPoly x k arg)
 sEvalPoly SingU _ = sOne
 sEvalPoly (SingS p) arg = sOne %+ sEvalPoly p arg
 sEvalPoly (SingT p) arg = arg %* sEvalPoly p arg
@@ -368,6 +385,6 @@ type family EvalPoly₀ (x :: Poly₀) k (arg :: k) :: k where
     EvalPoly₀ Z k _ = TZero k
     EvalPoly₀ (NZ p) k arg = EvalPoly p k arg
 
-sEvalPoly₀ :: (SZero k, SOne k, SPlus k, STimes k) => Sing Poly₀ x -> Sing k arg -> Sing k (EvalPoly₀ x k arg)
+sEvalPoly₀ :: (SZero k, SOne k, SPlus k, STimes k) => SPoly₀ x -> Sing arg -> Sing (EvalPoly₀ x k arg)
 sEvalPoly₀ SingZ _ = sZero
 sEvalPoly₀ (SingNZ p) arg = sEvalPoly p arg
