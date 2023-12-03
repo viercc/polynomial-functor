@@ -15,6 +15,7 @@ module Data.Polynomial.Functor(
     PolynomialFunctor(..),
 
     toSum, fromSum, toProduct, fromProduct,
+    toComp, fromComp,
 
     ZipPoly(..),
     AlignPoly(..)
@@ -24,7 +25,7 @@ import Data.Kind (Type)
 
 import Data.Functor.Identity
 import GHC.Generics
-    ( V1(), U1(..), Par1(..), type (:+:)(..), type (:*:)(..), type (:.:) )
+    ( U1(..), Par1(..), type (:+:)(..), type (:*:)(..), type (:.:)(..) )
 
 import Data.Singletons
 import Data.Polynomial
@@ -185,9 +186,31 @@ instance PolynomialFunctor Par1 where
     toPoly (Par1 x) = EvT x EvU
     fromPoly (EvT x EvU) = Par1 x
 
--- | wip
 instance (PolynomialFunctor f, PolynomialFunctor g) => PolynomialFunctor (f :.: g) where
+    type PolyRep (f :.: g) = PolyRep f << PolyRep g
+    sPolyRep = sPolyRep @f %<< sPolyRep @g
 
+    toPoly (Comp1 fgx) = fromComp (sPolyRep @f) (sPolyRep @g) (fmap toPoly (toPoly fgx))
+    fromPoly hx = Comp1 $ fromPoly @f $ fmap (fromPoly @g) $ toComp (sPolyRep @f) (sPolyRep @g) hx
+
+fromComp :: SPoly p -> SPoly q -> (Ev p (Ev q x)) -> Ev (p << q) x
+fromComp sp sq fgx = case sp of
+    SingU -> EvU
+    SingS sp' -> case fgx of
+        EvSNothing -> EvSNothing
+        EvSJust fgx' -> EvSJust (fromComp sp' sq fgx')
+    SingT sp' -> case fgx of
+        EvT gx fgx' -> fromProduct sq (sp' %<< sq) (gx :*: fromComp sp' sq fgx')
+
+toComp :: SPoly p -> SPoly q -> Ev (p << q) x -> Ev p (Ev q x)
+toComp sp sq hx = case sp of
+    SingU -> EvU
+    SingS sp' -> case hx of
+        EvSNothing -> EvSNothing
+        EvSJust hx' -> EvSJust (toComp sp' sq hx')
+    SingT sp' -> 
+        let gx :*: hx' = toProduct sq (sp' %<< sq) hx
+        in EvT gx (toComp sp' sq hx')
 
 -- | Any polynomial functor @'Ev' p@ can have a "zippy" applicative instance.
 --
