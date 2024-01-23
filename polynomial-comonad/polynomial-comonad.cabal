@@ -29,7 +29,6 @@ library
       PolyComonad.Store,
       PolyComonad.Traced,
       PolyComonad.NonEmpty,
-      BabySingleton,
       Flow
     -- other-modules:
     -- other-extensions:
@@ -38,7 +37,8 @@ library
       comonad,
       kan-extensions,
       finite-typelits,
-      typelits-witnesses >= 99,
+      typelits-witnesses >= 99.0.0.1,
+      singletons >= 3.0.2,
       ghc-typelits-natnormalise,
       ghc-typelits-knownnat
     hs-source-dirs:   src

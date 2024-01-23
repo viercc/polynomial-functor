@@ -1,6 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE PatternSynonyms #-}
@@ -10,6 +9,7 @@ module PolyComonad.NonEmpty where
 
 import Prelude hiding (id, (.))
 import Data.Kind (Type)
+import Data.Foldable (Foldable(..))
 
 import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NE
@@ -18,10 +18,12 @@ import GHC.TypeNats
 import GHC.TypeLits.Witnesses (pattern Succ, pattern Zero, (%-))
 
 import PolyComonad
-import Data.Foldable (Foldable(..))
 
 import Control.Category.NatOrd
 import Control.Category.Dual (Dual(..))
+
+import GHC.TypeNats.Singletons() -- import orphans
+import Data.Singletons.Sigma (Sigma(..))
 
 type Vec :: Nat -> Type -> Type
 data Vec n a where
@@ -64,7 +66,7 @@ toNonEmpty (NonEmptyVec as) = case as of
 fromNonEmptyVec :: NonEmptyVec a -> Poly (:>=:) a
 fromNonEmptyVec (NonEmptyVec as) =
     let n = vecLen as %- natSing @1
-    in MkPoly n (\m (Dual mn) -> withKnownNat n $ withKnownNat m $ index as mn)
+    in MkPoly n (\(m :&: Dual mn) -> withKnownNat n $ withKnownNat m $ index as mn)
 
 toNonEmptyVec :: Poly (:>=:) a -> NonEmptyVec a
-toNonEmptyVec (MkPoly n f) = NonEmptyVec ((\(Finite' mn) -> f natSing (Dual mn)) <$> indices (Succ n))
+toNonEmptyVec (MkPoly n f) = NonEmptyVec ((\(Finite' mn) -> f (natSing :&: Dual mn)) <$> indices (Succ n))

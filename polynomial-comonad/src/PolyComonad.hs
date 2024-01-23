@@ -19,18 +19,22 @@ import Data.Kind (Type)
 
 import Control.Comonad
 
-import BabySingleton
+import Data.Singletons
+import Data.Singletons.Sigma
 
 type Poly :: (k -> k -> Type) -> Type -> Type
 data Poly (cat :: k -> k -> Type) r where
-    MkPoly :: Sing k a -> (forall b. Sing k b -> cat a b -> r) -> Poly cat r
+    MkPoly
+      :: forall k (cat :: k -> k -> Type) (r :: Type) (a :: k).
+         Sing a -> (Sigma k (TyCon (cat a)) -> r)
+      -> Poly cat r
 
 instance Functor (Poly cat) where
-    fmap f (MkPoly sa k) = MkPoly sa (fmap (fmap f) k)
+    fmap f (MkPoly sa k) = MkPoly sa (f . k)
 
 instance Category cat => Comonad (Poly (cat :: k -> k -> Type)) where
     extract :: forall r. Poly cat r -> r
-    extract (MkPoly (sa :: Sing k a) g) = g sa (id :: cat a a)
+    extract (MkPoly sa g) = g (sa :&: id)
 
     duplicate :: forall r. Poly cat r -> Poly cat (Poly cat r)
-    duplicate (MkPoly sa k) = MkPoly sa \sb ab -> MkPoly sb \sc bc -> k sc (bc . ab)
+    duplicate (MkPoly sa k) = MkPoly sa \(sb :&: ab) -> MkPoly sb \(sc :&: bc) -> k (sc :&: (bc . ab))

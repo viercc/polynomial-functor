@@ -10,7 +10,9 @@ import Control.Category
 import Control.Comonad
 import Data.Kind (Type)
 
-import BabySingleton
+import Data.Bool.Singletons
+import Data.Singletons.Sigma
+
 import PolyComonad
 
 data H r = H1 r | H2 r r
@@ -48,12 +50,12 @@ instance Category Implies where
 
 -- | 'Poly' 'Implies' is isomorphic to 'H', including its 'Comonad' instance.
 toH :: Poly Implies r -> H r
-toH (MkPoly STrue k) = H1 (k STrue ImpId)
-toH (MkPoly SFalse k) = H2 (k SFalse ImpId) (k STrue ImpFT)
+toH (MkPoly STrue k) = H1 (k (STrue :&: ImpId))
+toH (MkPoly SFalse k) = H2 (k (SFalse :&: ImpId)) (k (STrue :&: ImpFT))
 
 fromH :: H r -> Poly Implies r
-fromH (H1 r0) = MkPoly STrue \_ tt -> case tt of
+fromH (H1 r0) = MkPoly STrue \(_ :&: tt) -> case tt of
     ImpId -> r0
-fromH (H2 r1 r0) = MkPoly SFalse \_ fz -> case fz of
+fromH (H2 r1 r0) = MkPoly SFalse \(_ :&: fz) -> case fz of
     ImpId -> r1
     ImpFT -> r0

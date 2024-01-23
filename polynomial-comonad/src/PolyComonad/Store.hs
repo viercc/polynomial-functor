@@ -6,12 +6,17 @@ module PolyComonad.Store where
 
 import Control.Comonad.Store
 
-import BabySingleton
+import Data.Singletons
 import PolyComonad
 import Control.Category.Indiscrete
+import Data.Singletons.Sigma (Sigma(..))
 
-fromStore :: Demote k => Store (Val k) r -> Poly (Indiscrete @k) r
-fromStore w = toSing (pos w) \sPos -> MkPoly sPos \sPos' _ -> peek (fromSing sPos') w
+fromStore :: SingKind k => Store (Demote k) r -> Poly (Indiscrete @k) r
+fromStore w = case toSing (pos w) of
+  SomeSing sPos -> MkPoly sPos \(sPos' :&: _) -> peek (fromSing sPos') w
 
-toStore :: Demote k => Poly (Indiscrete @k) r -> Store (Val k) r
-toStore (MkPoly sp body) = store (\v -> toSing v \sv -> body sv Indiscrete) (fromSing sp)
+toStore :: SingKind k => Poly (Indiscrete @k) r -> Store (Demote k) r
+toStore (MkPoly sp body) =
+  let f v = case toSing v of
+        SomeSing sv -> body (sv :&: Indiscrete)
+  in store f (fromSing sp)
