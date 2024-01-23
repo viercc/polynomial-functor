@@ -1,0 +1,6 @@
+packages: *.cabal
+
+source-repository-package
+    type: git
+    location: https://github.com/viercc/typelits-witnesses.git
+    tag: 25adb0aa63f0bd2459e037139329679fad634113
