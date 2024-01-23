@@ -61,7 +61,8 @@ library
     -- Modules exported by the library.
     exposed-modules:
       Data.Polynomial,
-      Data.Polynomial.Functor
+      Data.Polynomial.Functor,
+      Data.Polynomial.Functor.Deriving
     
     -- Other library packages from which modules are imported.
     build-depends:

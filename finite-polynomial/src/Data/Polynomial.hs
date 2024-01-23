@@ -13,7 +13,6 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE StandaloneDeriving #-}
 module Data.Polynomial(
-
   -- * Formal polynomials with natural-number (ℕ) coefficients
   Poly(..), Poly₀(..),
   Zero(..), Plus(..), One(..), Times(..),
