@@ -34,109 +34,6 @@ import Data.Coerce
 
 import Data.Polynomial.Functor
 
--- | Any polynomial functor @'Ev' p@ can have a "zippy" applicative instance.
---
--- >>> type P = 'S ('T ('S ('T 'U))) -- P(x) = 1 + x + x^2
--- >>> pure 0 :: Zippy P Int
--- Zippy {runZippy = EvSJust (EvT 0 (EvSJust (EvT 0 EvU)))}
--- >>> fx = Zippy $ EvSJust (EvT "A" (EvSJust (EvT "a" EvU))) :: Zippy P String
--- >>> fy = Zippy $ EvSJust (EvT "B" EvSNothing) :: Zippy P String
--- >>> fz = Zippy $ EvSNothing :: Zippy P String
--- >>> (++) <$> fx <*> fy
--- Zippy {runZippy = EvSJust (EvT "AB" EvSNothing)}
--- >>> (++) <$> fx <*> fz
--- Zippy {runZippy = EvSNothing}
--- >>> (++) <$> fy <*> fz
--- Zippy {runZippy = EvSNothing}
--- 
-newtype Zippy p x = Zippy { runZippy :: Ev p x }
-    deriving (Show, Functor, Foldable, Traversable)
-
-instance SingI p => Applicative (Zippy p) where
-    pure = Zippy . pureZippy sing
-
-    Zippy fx <*> Zippy fy = Zippy $ apZippy fx fy
-
-pureZippy :: Sing p -> x -> Ev p x
-pureZippy SingU = const EvU
-pureZippy (SingS sp') = EvSJust . pureZippy sp'
-pureZippy (SingT sp') =
-    let pure' = pureZippy sp'
-    in \x -> EvT x (pure' x)
-
-apZippy :: Ev p (a -> b) -> Ev p a -> Ev p b
-apZippy EvU _ = EvU
-apZippy EvSNothing _ = EvSNothing
-apZippy _ EvSNothing = EvSNothing
-apZippy (EvSJust fx') (EvSJust fy') = EvSJust (apZippy fx' fy')
-apZippy (EvT x fx') (EvT y fy') = EvT (x y) (apZippy fx' fy')
-
-
--- | Any polynomial functor /with no constant term/, @'Ev' (T p)@, can have an \"align-ey\" applicative and monad instance.
---
--- >>> type P = 'T ('S ('T 'U)) -- P(x) = x + x^2
--- >>> pure 0 :: Aligney P Int
--- Aligney {runAligney = EvT 0 EvSNothing}
--- >>> fx = Aligney $ EvT "A" (EvSJust (EvT "a" EvU)) :: Aligney P String
--- >>> fy = Aligney $ EvT "B" (EvSJust (EvT "b" EvU)) :: Aligney P String
--- >>> fz = Aligney $ EvT "C" EvSNothing :: Aligney P String
--- >>> (++) <$> fx <*> fy
--- Aligney {runAligney = EvT "AB" (EvSJust (EvT "ab" EvU))}
--- >>> (++) <$> fx <*> fz
--- Aligney {runAligney = EvT "AC" (EvSJust (EvT "aC" EvU))}
--- >>> (++) <$> fy <*> fz
--- Aligney {runAligney = EvT "BC" (EvSJust (EvT "bC" EvU))}
--- 
--- >>> fx >>= \x -> if x == "A" then fz else fy
--- Aligney {runAligney = EvT "C" (EvSJust (EvT "b" EvU))}
-newtype Aligney p x = Aligney { runAligney :: Ev p x }
-    deriving (Show, Functor, Foldable, Traversable)
-
-instance SingI p => Applicative (Aligney (T p)) where
-    pure = Aligney . pureAligney sing
-    Aligney fx <*> Aligney fy = Aligney (apAligney fx fy)
-
-pureAligney :: Sing p -> x -> Ev p x
-pureAligney SingU _ = EvU
-pureAligney (SingS _) _ = EvSNothing
-pureAligney (SingT sp') x = EvT x (pureAligney sp' x)
-
-apAligney :: Ev (T p) (a -> b) -> Ev (T p) a -> Ev (T p) b
-apAligney (EvT x fx') (EvT y fy') = EvT (x y) (apAlignAux x y fx' fy')
-
-apAlignAux :: (a -> b) -> a -> Ev p (a -> b) -> Ev p a -> Ev p b
-apAlignAux x y fx fy = case (fx, fy) of
-    (EvU, EvU) -> EvU
-    (EvSNothing, EvSNothing) -> EvSNothing
-    (EvSNothing, EvSJust fy') -> EvSJust (x <$> fy')
-    (EvSJust fx', EvSNothing) -> EvSJust (($ y) <$> fx')
-    (EvSJust fx', EvSJust fy') -> EvSJust (apAlignAux x y fx' fy')
-    (EvT x' fx', EvT y' fy') -> EvT (x' y') (apAlignAux x' y' fx' fy')
-
-instance SingI p => Monad (Aligney (T p)) where
-    Aligney fx >>= k = Aligney $ bindAligney fx (runAligney . k)
-
-headPoly :: Ev (T p) x -> x
-headPoly (EvT x _) = x
-tailPoly :: Ev (T p) x -> Ev p x
-tailPoly (EvT _ fx) = fx
-
-bindAligney :: Ev ('T p) a -> (a -> Ev ('T p) b) -> Ev ('T p) b
-bindAligney fx k = bindAligney' fx (Right . k)
-
-bindAligney' :: Ev ('T p) a -> (a -> Either b (Ev ('T p) b)) -> Ev ('T p) b
-bindAligney' (EvT x fx) k = case fx of
-    EvU -> either (\b -> EvT b EvU) id $ k x
-    EvSNothing -> either (\b -> EvT b EvSNothing) id $ k x
-    EvSJust fx' ->
-        let EvT z fz' = bindAligney' (EvT x fx') (lowerPolyS <=< k)
-        in EvT z (EvSJust fz')
-    EvT{} -> EvT (either id headPoly (k x)) (bindAligney' fx (fmap tailPoly . k))
-
-lowerPolyS :: Ev ('T ('S p)) a -> Either a (Ev ('T p) a)
-lowerPolyS (EvT x EvSNothing) = Left x
-lowerPolyS (EvT x (EvSJust fx)) = Right (EvT x fx)
-
 -- | Generic Deriving
 newtype ViaPolynomial (e :: Poly -> Type -> Type) (f :: Type -> Type) a = ViaPolynomial { unwrapViaPolynomial :: f a }
     deriving Functor
@@ -167,6 +64,116 @@ instance (PolynomialFunctor f, p ~ PolyRep f, Coercible e Ev, Monad (e p)) => Mo
         coerceFwd = coerce
         coerceBwd :: forall c. e p c -> Ev p c
         coerceBwd = coerce
+
+
+
+
+-- | Any polynomial functor @'Ev' p@ can have a "zippy" applicative instance.
+--
+-- == Example
+-- 
+-- >>> type P = 'S ('T ('S ('T 'U))) -- P(x) = 1 + x + x^2
+-- >>> pure 0 :: Zippy P Int
+-- Zippy {runZippy = Go (0 ::: Go (0 ::: End))}
+-- >>> fx = Zippy $ Go ("A" ::: Go ("a" ::: End)) :: Zippy P String
+-- >>> fy = Zippy $ Go ("B" ::: Stop) :: Zippy P String
+-- >>> fz = Zippy $ Stop :: Zippy P String
+-- >>> (++) <$> fx <*> fy
+-- Zippy {runZippy = Go ("AB" ::: Stop)}
+-- >>> (++) <$> fx <*> fz
+-- Zippy {runZippy = Stop}
+-- >>> (++) <$> fy <*> fz
+-- Zippy {runZippy = Stop}
+newtype Zippy p x = Zippy { runZippy :: Ev p x }
+    deriving (Show, Functor, Foldable, Traversable)
+
+instance SingI p => Applicative (Zippy p) where
+    pure = Zippy . pureZippy sing
+
+    Zippy fx <*> Zippy fy = Zippy $ apZippy fx fy
+
+pureZippy :: Sing p -> x -> Ev p x
+pureZippy SingU = const End
+pureZippy (SingS sp') = Go . pureZippy sp'
+pureZippy (SingT sp') =
+    let pure' = pureZippy sp'
+    in \x -> x ::: pure' x
+
+apZippy :: Ev p (a -> b) -> Ev p a -> Ev p b
+apZippy End _ = End
+apZippy Stop _ = Stop
+apZippy _ Stop = Stop
+apZippy (Go fx') (Go fy') = Go (apZippy fx' fy')
+apZippy (x ::: fx') (y ::: fy') = x y ::: apZippy fx' fy'
+
+-- | Any polynomial functor /with no constant term/, @'Ev' (T p)@, can have an \"aligney\" applicative and monad instance.
+-- 
+-- == Example
+-- 
+-- >>> type Q = 'T ('S ('T 'U)) -- Q(x) = x + x^2
+-- >>> pure 0 :: Aligney Q Int
+-- Aligney {runAligney = 0 ::: Stop}
+-- >>> fx = Aligney $ "A" ::: Go ("a" ::: End) :: Aligney Q String
+-- >>> fy = Aligney $ "B" ::: Go ("b" ::: End) :: Aligney Q String
+-- >>> fz = Aligney $ "C" ::: Stop :: Aligney Q String
+-- >>> (++) <$> fx <*> fy
+-- Aligney {runAligney = "AB" ::: Go ("ab" ::: End)}
+-- >>> (++) <$> fx <*> fz
+-- Aligney {runAligney = "AC" ::: Go ("aC" ::: End)}
+-- >>> (++) <$> fy <*> fz
+-- Aligney {runAligney = "BC" ::: Go ("bC" ::: End)}
+-- >>> fx >>= \x -> if x == "A" then fz else fy
+-- Aligney {runAligney = "C" ::: Go ("b" ::: End)}
+newtype Aligney p x = Aligney { runAligney :: Ev p x }
+    deriving (Show, Functor, Foldable, Traversable)
+
+instance SingI p => Applicative (Aligney (T p)) where
+    pure = Aligney . pureAligney sing
+    Aligney fx <*> Aligney fy = Aligney (apAligney fx fy)
+
+pureAligney :: Sing p -> x -> Ev p x
+pureAligney SingU _ = End
+pureAligney (SingS _) _ = Stop
+pureAligney (SingT sp') x = x ::: pureAligney sp' x
+
+apAligney :: Ev (T p) (a -> b) -> Ev (T p) a -> Ev (T p) b
+apAligney (x ::: fx') (y ::: fy') = x y ::: apAlignAux x y fx' fy'
+
+apAlignAux :: (a -> b) -> a -> Ev p (a -> b) -> Ev p a -> Ev p b
+apAlignAux x y fx fy = case (fx, fy) of
+    (End, End) -> End
+    (Stop, Stop) -> Stop
+    (Stop, Go fy') -> Go (x <$> fy')
+    (Go fx', Stop) -> Go (($ y) <$> fx')
+    (Go fx', Go fy') -> Go (apAlignAux x y fx' fy')
+    (x' ::: fx', y' ::: fy') -> x' y' ::: apAlignAux x' y' fx' fy'
+
+instance SingI p => Monad (Aligney (T p)) where
+    Aligney fx >>= k = Aligney $ bindAligney fx (runAligney . k)
+
+headPoly :: Ev (T p) x -> x
+headPoly (x ::: _) = x
+tailPoly :: Ev (T p) x -> Ev p x
+tailPoly (_ ::: fx) = fx
+
+bindAligney :: Ev ('T p) a -> (a -> Ev ('T p) b) -> Ev ('T p) b
+bindAligney fx k = bindAligney' fx (Right . k)
+
+bindAligney' :: Ev ('T p) a -> (a -> Either b (Ev ('T p) b)) -> Ev ('T p) b
+bindAligney' ((:::) x fx) k = case fx of
+    End -> either (::: End) id $ k x
+    Stop -> either (::: Stop) id $ k x
+    Go fx' ->
+        let z ::: fz' = bindAligney' (x ::: fx') (lowerPolyS <=< k)
+        in z ::: Go fz'
+    x' ::: fx' ->
+        let z = either id headPoly (k x)
+            fz = bindAligney' (x' ::: fx') (fmap tailPoly . k)
+        in z ::: fz
+
+lowerPolyS :: Ev ('T ('S p)) a -> Either a (Ev ('T p) a)
+lowerPolyS (x ::: Stop) = Left x
+lowerPolyS (x ::: Go fx) = Right (x ::: fx)
 
 --- Example
 

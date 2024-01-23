@@ -36,10 +36,12 @@ deriving instance Show x => Show (Ev₀ p x)
 deriving instance Functor (Ev₀ p)
 
 data Ev (p :: Poly) (x :: Type) where
-    EvU :: Ev 'U x
-    EvSNothing :: Ev ('S p) x
-    EvSJust :: Ev p x -> Ev ('S p) x
-    EvT :: x -> Ev p x -> Ev ('T p) x
+    End :: Ev 'U x
+    Stop :: Ev ('S p) x
+    Go :: Ev p x -> Ev ('S p) x
+    (:::) :: x -> Ev p x -> Ev ('T p) x
+
+infixr 7 :::
 
 deriving instance Show x => Show (Ev p x)
 deriving instance Functor (Ev p)
@@ -63,27 +65,27 @@ instance SingI p => PolynomialFunctor (Ev p) where
 instance PolynomialFunctor Proxy where
     type PolyRep Proxy = U
     sPolyRep = SingU
-    toPoly _ = EvU
+    toPoly _ = End
     fromPoly _ = Proxy
  
 instance PolynomialFunctor Identity where
     type PolyRep Identity = T U
 
     sPolyRep = SingT SingU
-    toPoly (Identity x) = EvT x EvU
-    fromPoly (EvT x EvU) = Identity x
+    toPoly (Identity x) = x ::: End
+    fromPoly (x ::: End) = Identity x
 
 instance PolynomialFunctor U1 where
     type PolyRep U1 = U
     sPolyRep = SingU
-    toPoly _ = EvU
+    toPoly _ = End
     fromPoly _ = U1
 
 -- | Quick&dirty alternative to @Finitary c => PolynomialFunctor (K1 i c)@
 instance PolynomialFunctor (K1 i ()) where
     type PolyRep (K1 i ()) = U
     sPolyRep = SingU
-    toPoly _ = EvU
+    toPoly _ = End
     fromPoly _ = K1 ()
 
 -- | Quick&dirty alternative to @Finitary c => PolynomialFunctor (K1 i c)@
@@ -91,9 +93,9 @@ instance PolynomialFunctor (K1 i Bool) where
     type PolyRep (K1 i Bool) = S U
     sPolyRep = sing
 
-    toPoly (K1 b) = if b then EvSJust EvU else EvSNothing
-    fromPoly EvSNothing = K1 False
-    fromPoly (EvSJust _) = K1 True
+    toPoly (K1 b) = if b then Go End else Stop
+    fromPoly Stop = K1 False
+    fromPoly (Go _) = K1 True
 
 instance PolynomialFunctor f => PolynomialFunctor (M1 i m f) where
     type PolyRep (M1 _ _ f) = PolyRep f
@@ -122,47 +124,47 @@ instance (PolynomialFunctor f, PolynomialFunctor g) => PolynomialFunctor (f :+: 
 toSum :: Sing p -> Sing q -> Ev (p + q) x -> (Ev p :+: Ev q) x
 toSum sp sq hx = case sp of
     SingU -> case hx of
-        EvSNothing -> L1 EvU
-        EvSJust gx -> R1 gx
+        Stop -> L1 End
+        Go gx -> R1 gx
     SingS sp' -> case hx of
-        EvSNothing -> L1 EvSNothing
-        EvSJust hx' -> case toSum sp' sq hx' of
-            L1 fx -> L1 (EvSJust fx)
+        Stop -> L1 Stop
+        Go hx' -> case toSum sp' sq hx' of
+            L1 fx -> L1 (Go fx)
             R1 gx -> R1 gx
     SingT sp' -> case sq of
         SingU -> case hx of
-            EvSNothing -> R1 EvU
-            EvSJust fx -> L1 fx
+            Stop -> R1 End
+            Go fx -> L1 fx
         SingS sq' -> case hx of
-            EvSNothing -> R1 EvSNothing
-            EvSJust hx' -> case toSum sp sq' hx' of
+            Stop -> R1 Stop
+            Go hx' -> case toSum sp sq' hx' of
                 L1 fx -> L1 fx
-                R1 gx -> R1 (EvSJust gx)
+                R1 gx -> R1 (Go gx)
         SingT sq' -> case hx of
-            EvT x hx' -> case toSum sp' sq' hx' of
-                L1 fx -> L1 (EvT x fx)
-                R1 gx -> R1 (EvT x gx)
+            x ::: hx' -> case toSum sp' sq' hx' of
+                L1 fx -> L1 (x ::: fx)
+                R1 gx -> R1 (x ::: gx)
 
 fromSum :: Sing p -> Sing q -> (Ev p :+: Ev q) x -> Ev (p + q) x
 fromSum sp sq fgx = case sp of
     SingU -> case fgx of
-        L1 EvU -> EvSNothing
-        R1 gx -> EvSJust gx
+        L1 End -> Stop
+        R1 gx -> Go gx
     SingS sp' -> case fgx of
-        L1 EvSNothing -> EvSNothing
-        L1 (EvSJust fx) -> EvSJust (fromSum sp' sq (L1 fx))
-        R1 gx -> EvSJust (fromSum sp' sq (R1 gx))
+        L1 Stop -> Stop
+        L1 (Go fx) -> Go (fromSum sp' sq (L1 fx))
+        R1 gx -> Go (fromSum sp' sq (R1 gx))
     SingT sp' -> case sq of
         SingU -> case fgx of
-            L1 fx -> EvSJust fx
-            R1 EvU -> EvSNothing
+            L1 fx -> Go fx
+            R1 End -> Stop
         SingS sq' -> case fgx of
-            L1 fx -> EvSJust (fromSum sp sq' (L1 fx))
-            R1 EvSNothing -> EvSNothing
-            R1 (EvSJust gx) -> EvSJust (fromSum sp sq' (R1 gx))
+            L1 fx -> Go (fromSum sp sq' (L1 fx))
+            R1 Stop -> Stop
+            R1 (Go gx) -> Go (fromSum sp sq' (R1 gx))
         SingT sq' -> case fgx of
-            L1 (EvT x fx) -> EvT x (fromSum sp' sq' (L1 fx))
-            R1 (EvT x gx) -> EvT x (fromSum sp' sq' (R1 gx))
+            L1 (x ::: fx) -> x ::: fromSum sp' sq' (L1 fx)
+            R1 (x ::: gx) -> x ::: fromSum sp' sq' (R1 gx)
 
 instance (PolynomialFunctor f, PolynomialFunctor g) => PolynomialFunctor (f :*: g) where
     type PolyRep (f :*: g) = PolyRep f * PolyRep g
@@ -178,70 +180,70 @@ fromProduct sp sq (fx :*: gx) = case sp of
     SingS sp' -> case sq of
         SingU -> fx
         SingS sq' -> case (fx, gx) of
-            (EvSNothing,  EvSNothing)  -> EvSNothing
-            (EvSJust fx', EvSNothing)  -> EvSJust $ fromSum (sp' %+ sq') (sp' %* sq') (L1 $ fromSum sp' sq' (L1 fx'))
-            (EvSNothing,  EvSJust gx') -> EvSJust $ fromSum (sp' %+ sq') (sp' %* sq') (L1 $ fromSum sp' sq' (R1 gx'))
-            (EvSJust fx', EvSJust gx') -> EvSJust $ fromSum (sp' %+ sq') (sp' %* sq') (R1 $ fromProduct sp' sq' (fx' :*: gx'))
+            (Stop,  Stop)  -> Stop
+            (Go fx', Stop)  -> Go $ fromSum (sp' %+ sq') (sp' %* sq') (L1 $ fromSum sp' sq' (L1 fx'))
+            (Stop,  Go gx') -> Go $ fromSum (sp' %+ sq') (sp' %* sq') (L1 $ fromSum sp' sq' (R1 gx'))
+            (Go fx', Go gx') -> Go $ fromSum (sp' %+ sq') (sp' %* sq') (R1 $ fromProduct sp' sq' (fx' :*: gx'))
         SingT sq' -> case gx of
-            EvT x gx' -> EvT x $ fromProduct sp sq' (fx :*: gx')
+            x ::: gx' -> x ::: fromProduct sp sq' (fx :*: gx')
     SingT sp' -> case fx of
-        EvT x fx' -> EvT x $ fromProduct sp' sq (fx' :*: gx)
+        x ::: fx' -> x ::: fromProduct sp' sq (fx' :*: gx)
 
 toProduct :: Sing p -> Sing q -> Ev (p * q) x -> (Ev p :*: Ev q) x
 toProduct sp sq hx = case sp of
-    SingU -> EvU :*: hx
+    SingU -> End :*: hx
     SingS sp' -> case sq of
-        SingU -> hx :*: EvU
+        SingU -> hx :*: End
         SingS sq' -> case hx of
-            EvSNothing -> EvSNothing :*: EvSNothing
-            EvSJust hx' -> case toSum (sp' %+ sq') (sp' %* sq') hx' of
+            Stop -> Stop :*: Stop
+            Go hx' -> case toSum (sp' %+ sq') (sp' %* sq') hx' of
                 L1 hx'' -> case toSum sp' sq' hx'' of
-                    L1 fx' -> EvSJust fx' :*: EvSNothing
-                    R1 gx' -> EvSNothing :*: EvSJust gx'
+                    L1 fx' -> Go fx' :*: Stop
+                    R1 gx' -> Stop :*: Go gx'
                 R1 hx'' ->
                     let fx' :*: gx' = toProduct sp' sq' hx''
-                    in EvSJust fx' :*: EvSJust gx'
+                    in Go fx' :*: Go gx'
         SingT sq' -> case hx of
-            EvT x hx' ->
+            x ::: hx' ->
                 let fx :*: gx' = toProduct sp sq' hx'
-                in fx :*: EvT x gx'
+                in fx :*: (x ::: gx')
     SingT sp' -> case hx of
-        EvT x hx' ->
+        x ::: hx' ->
             let fx' :*: gx = toProduct sp' sq hx'
-            in EvT x fx' :*: gx
+            in (x ::: fx') :*: gx
 
 instance PolynomialFunctor Par1 where
     type PolyRep Par1 = T U
     sPolyRep = SingT SingU
 
-    toPoly (Par1 x) = EvT x EvU
-    fromPoly (EvT x EvU) = Par1 x
+    toPoly (Par1 x) = x ::: End
+    fromPoly (x ::: End) = Par1 x
 
 instance (PolynomialFunctor f, PolynomialFunctor g) => PolynomialFunctor (f :.: g) where
     type PolyRep (f :.: g) = PolyRep f << PolyRep g
     sPolyRep = sPolyRep @f %<< sPolyRep @g
 
-    toPoly (Comp1 fgx) = fromComp (sPolyRep @f) (sPolyRep @g) (fmap toPoly (toPoly fgx))
-    fromPoly hx = Comp1 $ fromPoly @f $ fmap (fromPoly @g) $ toComp (sPolyRep @f) (sPolyRep @g) hx
+    toPoly (Comp1 fgx) = fromComp (sPolyRep @f) (sPolyRep @g) (toPoly (fmap toPoly fgx))
+    fromPoly hx = Comp1 $ fmap (fromPoly @g) $ fromPoly @f $ toComp (sPolyRep @f) (sPolyRep @g) hx
 
-fromComp :: SPoly p -> SPoly q -> (Ev p (Ev q x)) -> Ev (p << q) x
+fromComp :: SPoly p -> SPoly q -> Ev p (Ev q x) -> Ev (p << q) x
 fromComp sp sq fgx = case sp of
-    SingU -> EvU
+    SingU -> End
     SingS sp' -> case fgx of
-        EvSNothing -> EvSNothing
-        EvSJust fgx' -> EvSJust (fromComp sp' sq fgx')
+        Stop -> Stop
+        Go fgx' -> Go (fromComp sp' sq fgx')
     SingT sp' -> case fgx of
-        EvT gx fgx' -> fromProduct sq (sp' %<< sq) (gx :*: fromComp sp' sq fgx')
+        gx ::: fgx' -> fromProduct sq (sp' %<< sq) (gx :*: fromComp sp' sq fgx')
 
 toComp :: SPoly p -> SPoly q -> Ev (p << q) x -> Ev p (Ev q x)
 toComp sp sq hx = case sp of
-    SingU -> EvU
+    SingU -> End
     SingS sp' -> case hx of
-        EvSNothing -> EvSNothing
-        EvSJust hx' -> EvSJust (toComp sp' sq hx')
+        Stop -> Stop
+        Go hx' -> Go (toComp sp' sq hx')
     SingT sp' -> 
         let gx :*: hx' = toProduct sq (sp' %<< sq) hx
-        in EvT gx (toComp sp' sq hx')
+        in gx ::: toComp sp' sq hx'
 
 -- via Generically1
 instance (Generic1 f, PolynomialFunctor (Rep1 f)) => PolynomialFunctor (Generically1 f) where
