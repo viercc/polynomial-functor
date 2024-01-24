@@ -109,12 +109,12 @@ genBar as = MkVar <$> genFoo (genMaybe (genFoo as))
 propsPolynomialFunctorIso :: IO ()
 propsPolynomialFunctorIso = do
   putStrLn "PolynomialFunctor Foo"
-  putStrLn $ "sPolyRep @Foo == " ++ show (sPolyRep @Foo)
+  putStrLn $ "PolyRep Foo == " ++ show (fromSing (sPolyRep @Foo))
   putStrLn "isIsomorphism toPoly fromPoly"
   property $
     isIsomorphism genFoo (genEv (sPolyRep @Foo)) toPoly fromPoly
   putStrLn "PolynomialFunctor Bar"
-  putStrLn $ "sPolyRep @Bar == " ++ show (sPolyRep @Bar)
+  putStrLn $ "PolyRep Bar == " ++ show (fromSing (sPolyRep @Bar))
   property $
     isIsomorphism genBar (genEv (sPolyRep @Bar)) toPoly fromPoly
 
