@@ -32,6 +32,8 @@ import Data.Polynomial
 data Ev₀ (p :: Poly₀) (x :: Type) where
     MakeEv₀ :: Ev p x -> Ev₀ (NZ p) x
 
+deriving instance Eq x => Eq (Ev₀ p x)
+deriving instance Ord x => Ord (Ev₀ p x)
 deriving instance Show x => Show (Ev₀ p x)
 deriving instance Functor (Ev₀ p)
 
@@ -43,6 +45,8 @@ data Ev (p :: Poly) (x :: Type) where
 
 infixr 7 :::
 
+deriving instance Eq x => Eq (Ev p x)
+deriving instance Ord x => Ord (Ev p x)
 deriving instance Show x => Show (Ev p x)
 deriving instance Functor (Ev p)
 deriving instance Foldable (Ev p)

@@ -49,7 +49,7 @@ import Data.Kind (Type)
 -- In other words:
 -- 
 -- * @U :: Poly@ represents a constant polynomial @{U}(x) = 1@
--- * @S p :: Poly@ represents an addition of constant @1@ to the polynomial @{p}@.
+-- * @S p :: Poly@ represents 1 plus the polynomial @{p}@.
 -- * @T p :: Poly@ represents @{p}@ multiplied by the parameter of the polynomial.
 -- 
 -- Any __nonzero__ polynomial with coefficients in ℕ can be represented using 'Poly'.
@@ -69,7 +69,7 @@ import Data.Kind (Type)
 data Poly = U | S Poly | T Poly
     deriving (Show, Eq, Ord)
 
--- | 'Poly₀' is 'Poly' but can be zero.
+-- | 'Poly₀' is either zero or a 'Poly'.
 --
 -- @
 -- {Z}(x) = 0
@@ -80,7 +80,7 @@ data Poly₀ = Z | NZ Poly
 
 -- * Semiring
 --
--- The algebra of natural-number-coefficient polynomial can be seen as a free semiring with single generator.
+-- The algebra of natural-number-coefficient polynomial can be seen as the free semiring on a singleton set.
 -- In other words, it's an expression with one unknown parameter @x@, interpretable in any semiring.
 
 class Zero a where

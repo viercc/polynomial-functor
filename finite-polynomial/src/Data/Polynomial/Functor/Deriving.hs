@@ -85,7 +85,7 @@ instance (PolynomialFunctor f, p ~ PolyRep f, Coercible e Ev, Monad (e p)) => Mo
 -- >>> (++) <$> fy <*> fz
 -- Zippy {runZippy = Stop}
 newtype Zippy p x = Zippy { runZippy :: Ev p x }
-    deriving (Show, Functor, Foldable, Traversable)
+    deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
 instance SingI p => Applicative (Zippy p) where
     pure = Zippy . pureZippy sing
@@ -125,7 +125,7 @@ apZippy (x ::: fx') (y ::: fy') = x y ::: apZippy fx' fy'
 -- >>> fx >>= \x -> if x == "A" then fz else fy
 -- Aligney {runAligney = "C" ::: Go ("b" ::: End)}
 newtype Aligney p x = Aligney { runAligney :: Ev p x }
-    deriving (Show, Functor, Foldable, Traversable)
+    deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
 instance SingI p => Applicative (Aligney (T p)) where
     pure = Aligney . pureAligney sing
@@ -174,15 +174,3 @@ bindAligney' ((:::) x fx) k = case fx of
 lowerPolyS :: Ev ('T ('S p)) a -> Either a (Ev ('T p) a)
 lowerPolyS (x ::: Stop) = Left x
 lowerPolyS (x ::: Go fx) = Right (x ::: fx)
-
---- Example
-
-data Example a = Example (Maybe a) (Maybe a) (Maybe a)
-   deriving (Show, Functor, Foldable, Traversable, Generic1)
-   deriving PolynomialFunctor via (Generically1 Example)
-   deriving Applicative via (ViaPolynomial Zippy Example)
-
-data Example' a = Example1' a | Example2' a a | Example3' a a | Example4' a a a a
-   deriving (Show, Functor, Foldable, Traversable, Generic1)
-   deriving PolynomialFunctor via (Generically1 Example')
-   deriving (Applicative, Monad) via (ViaPolynomial Aligney Example')
