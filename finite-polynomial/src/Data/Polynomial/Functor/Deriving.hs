@@ -24,8 +24,6 @@ module Data.Polynomial.Functor.Deriving(
 
 import Data.Kind (Type)
 
-import GHC.Generics (Generic1, Generically1(..))
-
 import Data.Singletons
 import Data.Polynomial
 import Control.Monad ((<=<))
