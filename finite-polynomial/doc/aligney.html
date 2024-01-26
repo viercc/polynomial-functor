@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Aligney 画像用</title>
+    <style>
+      body {
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 15pt;
+      }
+      table {
+        border-collapse: collapse;
+      }
+      table :is(td, th) {
+        border-color: #669;
+        border-width: 1px;
+        padding: 0px;
+        text-align: center;
+      }
+      table thead tr:first-child :is(td,th) {
+        border-top-style: solid;
+      }
+      table tbody tr:last-child :is(td, th) {
+        border-bottom-style: solid;
+      }
+
+      table.poly-structure tbody th {
+        padding: 0 0.5em 0 0.5em;
+      }
+
+      .sep {
+        border-left-style: solid;
+      }
+      .val {
+        width: 32px;
+      }
+      .gap {
+        width: 16px;
+      }
+      tr > * {
+        height: 32px;
+      }
+      tr.rowgap > :is(td, th) {
+        height: 16px;
+      }
+      tr.rowsep > :is(td, th) {
+        border-top-style: solid;
+      }
+
+      td.mark {
+        background-color: rgb(210,245,200);
+      }
+      code {
+        color: black;
+      }
+
+      .poly-structure tbody :is(td, th) {
+        border-top-style: solid;
+        font-size: 50%;
+        height: 16px;
+      }
+      
+      .join .rowgap :is(td, th) {
+        height: 16px;
+      }
+      
+      .join th {
+        background-color: lightgray
+      }
+
+      .join .rowmark th {
+        background-color: rgb(110, 205, 100)
+      }
+    </style>
+  </head>
+  <body>
+<pre>
+data F x = A x x
+         | B x x x
+         | C x x x
+         | D x x x x
+</pre>
+
+    <table class="poly-structure">
+      <thead>
+        <tr>
+          <th></th><th class="sep val">●</th><th class="val">●</th><th class="sep val">●</th><th class="sep gap"></th><th class="sep val">●</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th>A x y</th><td class="mark sep val">x</td><td class="mark val">y</td><td class="sep val"></td><td class="sep gap"></td><td class="sep val"></td>
+        </tr>
+        <tr>
+          <th>B x y z</th><td class="mark sep val">x</td><td class="mark val">y</td><td class="mark sep val">z</td><td class="sep gap"></td><td class="sep val"></td>
+        </tr>
+        <tr>
+          <th>C x y z</th><td class="mark sep val">x</td><td class="mark val">y</td><td class="mark sep val">z</td><td class="mark sep gap"></td><td class="sep val"></td>
+        </tr>
+        <tr>
+          <th>D x y z w</th><td class="mark sep val">x</td><td class="mark val">y</td><td class="mark sep val">z</td><td class="mark sep gap"></td><td class="mark sep val">w</td>
+        </tr>
+      </tbody>
+    </table>
+    <p><hr></p>
+    <!-- ****** -->
+    <table class="join">
+      <thead>
+        <tr>
+          <th></th><th class="sep val">●</th><th class="val">●</th><th class="sep val">●</th><th class="sep gap"></th><th class="sep val">●</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="rowsep">
+          <th class="val">●</th><td class="sep val">●</td><td class="val">●</td><td class="sep val">●</td><td class="sep gap"></td><td class="sep val">●</td>
+        </tr>
+        <tr>
+          <th class="val">●</th><td class="sep val">●</td><td class="val">●</td><td class="sep val">●</td><td class="sep gap"></td><td class="sep val">●</td>
+        </tr>
+        <tr class="rowsep">
+          <th class="val">●</th><td class="sep val">●</td><td class="val">●</td><td class="sep val">●</td><td class="sep gap"></td><td class="sep val">●</td>
+        </tr>
+        <tr class="rowgap rowsep">
+          <th class="gap"></th><td class="sep val"></td><td class="val"></td><td class="sep val"></td><td class="sep gap"></td><td class="sep val"></td>
+        </tr>
+        <tr class="rowsep">
+          <th class="val">●</th><td class="sep val">●</td><td class="val">●</td><td class="sep val">●</td><td class="sep gap"></td><td class="sep val">●</td>
+        </tr>
+      </tbody>
+    </table>
+
+
+    <p><hr></p>
+    <!-- ****** -->
+    <pre>
+C (B 11 12 13)
+  (D 21 22 23 24)
+  (A 31 32)
+        :: F (F x)
+    </pre>
+    <table class="join">
+      <thead>
+        <tr>
+          <th></th><th class="sep val">●</th><th class="val">●</th><th class="sep val">●</th><th class="sep gap"></th><th class="sep val">●</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="rowsep rowmark">
+          <th class="val">●</th><td class="mark sep val">11</td><td class="mark val">12</td><td class="mark sep val">13</td><td class="sep gap"></td><td class="sep val">-</td>
+        </tr>
+        <tr class ="rowmark">
+          <th class="val">●</th><td class="mark sep val">21</td><td class="mark val">22</td><td class="mark sep val">23</td><td class="mark sep gap"></td><td class="mark sep val">24</td>
+        </tr>
+        <tr class="rowsep rowmark">
+          <th class="val">●</th><td class="mark sep val">31</td><td class="mark val">32</td><td class="sep val">-</td><td class="sep gap"></td><td class="sep val">-</td>
+        </tr>
+        <tr class="rowgap rowsep rowmark">
+          <th class="gap"></th><td class="mark sep val"></td><td class="mark val"></td><td class="sep val"></td><td class="sep gap"></td><td class="sep val"></td>
+        </tr>
+        <tr class="rowsep">
+          <th class="val">●</th><td class="sep val">-</td><td class="val">-</td><td class="sep val">-</td><td class="sep gap"></td><td class="sep val">-</td>
+        </tr>
+      </tbody>
+    </table>
+    <p><hr></p>
+    <table class="join">
+      <thead>
+        <tr>
+          <th></th><th class="sep val">●</th><th class="val">●</th><th class="sep val">●</th><th class="sep gap"></th><th class="sep val">●</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="rowsep rowmark">
+          <th class="val">●</th><td class="mark sep val">11</td><td class="mark val">12</td><td class="mark sep val">13</td><td class="sep gap"></td><td class="sep val">-</td>
+        </tr>
+        <tr class ="rowmark">
+          <th class="val">●</th><td class="mark sep val">21</td><td class="mark val">22</td><td class="mark sep val">23</td><td class="mark sep gap"></td><td class="mark sep val">24</td>
+        </tr>
+        <tr class="rowsep">
+          <th class="val">●</th><td class="sep val">-</td><td class="val">-</td><td class="sep val">-</td><td class="sep gap"></td><td class="sep val">-</td>
+        </tr>
+        <tr class="rowgap rowsep">
+          <th class="gap"></th><td class="sep val"></td><td class="val"></td><td class="sep val"></td><td class="sep gap"></td><td class="sep val"></td>
+        </tr>
+        <tr class="rowsep">
+          <th class="val">●</th><td class="sep val">-</td><td class="val">-</td><td class="sep val">-</td><td class="sep gap"></td><td class="sep val">-</td>
+        </tr>
+      </tbody>
+    </table>
+<pre>
+join $
+  C (B 11 12 13)
+    (D 21 22 23 24)
+    (A 31 32)
+  = C 11 22 32
+</pre>
+  </body>
+</html>
