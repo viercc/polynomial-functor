@@ -5,9 +5,9 @@
 {-# LANGUAGE DeriveFunctor #-}
 module Data.Functor.Pow (Pow(..), functionToPow, powToFunction) where
 
-import GHC.TypeNats.Compat
+import GHC.TypeNats
+import GHC.TypeNats.Extra
 import Data.Finite
-import GHC.TypeLits.Witnesses
 
 
 -- | @Pow n f = f :*: f :*: ...(n)... :*: f@

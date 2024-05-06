@@ -13,10 +13,10 @@ module Data.Functor.Polynomial(
 import Data.Functor.Classes ( Eq1(..), eq1, Ord1(..), compare1 )
 import Data.Kind (Type)
 import Data.Type.Equality ((:~:)(..))
-import GHC.TypeNats
 
+import GHC.TypeNats
+import GHC.TypeNats.Extra
 import Data.Finite
-import GHC.TypeLits.Witnesses
 import qualified Data.Vector.Sized as SV
 
 import Data.GADT.HasSNat ( HasSNat(..) )

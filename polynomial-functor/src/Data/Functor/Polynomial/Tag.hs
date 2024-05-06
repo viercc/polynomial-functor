@@ -53,8 +53,8 @@ import Data.Kind (Type)
 import Data.Type.Equality ((:~:)(..))
 import GHC.Generics ( type (:+:)(..) )
 
-import GHC.TypeNats.Compat (Nat, SNat, pattern SNat, withKnownNat, type (+), type (*), )
-import GHC.TypeLits.Witnesses ( pattern Succ, pattern Zero, (%+), (%*) )
+import GHC.TypeNats hiding (pattern SNat)
+import GHC.TypeNats.Extra
 
 import Data.GADT.HasSNat
 import Data.GADT.Show

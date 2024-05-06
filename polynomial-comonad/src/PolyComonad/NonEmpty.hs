@@ -15,7 +15,7 @@ import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NE
 
 import GHC.TypeNats
-import GHC.TypeLits.Witnesses (pattern Succ, pattern Zero, (%-))
+import GHC.TypeNats.Extra (SNat(Succ, Zero), (%-))
 
 import PolyComonad
 

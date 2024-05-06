@@ -41,15 +41,15 @@ library
         Data.Functor.Polynomial.Tag,
         Data.Functor.Polynomial.Class,
         Data.Functor.Pow,
-        Data.Finite.Extra,
         Data.GADT.HasSNat,
         Data.GADT.Compare.Extra
     build-depends: 
-        base >= 4.17 && < 4.19
+        base >= 4.17 && < 4.20
       , finite-typelits
-      , typelits-witnesses >= 99.0 
-      , finitary
+      , finitary >= 2.1.1.1
+      , singletons-minibase
       , ghc-typelits-natnormalise
+      , ghc-typelits-knownnat
       , vector-sized
       , some
       , kan-extensions

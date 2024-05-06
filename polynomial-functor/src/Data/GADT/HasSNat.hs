@@ -3,7 +3,7 @@
 module Data.GADT.HasSNat where
 
 import GHC.TypeNats (KnownNat())
-import GHC.TypeLits.Witnesses ( SNat(), pattern SNat )
+import GHC.TypeNats.Extra (SNat(SNat))
 import Data.Type.Equality ((:~:)(..) )
 import GHC.Generics ((:+:)(..))
 

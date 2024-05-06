@@ -2,9 +2,7 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 module GHC.TypeNats.Singletons where
 
-import GHC.TypeNats.Compat (KnownNat, Nat)
-import GHC.TypeLits.Witnesses
-
+import GHC.TypeNats
 import Data.Singletons
 
 type instance Sing = SNat

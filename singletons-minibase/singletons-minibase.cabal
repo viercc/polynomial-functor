@@ -1,0 +1,34 @@
+cabal-version:      3.0
+name:               singletons-minibase
+version:            0.1.0.0
+synopsis:           Few selections of "singletons" instances
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             Koji Miyazato
+maintainer:         viercc@gmail.com
+category:           Data
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+
+common warnings
+    ghc-options: -Wall
+
+library
+    import:           warnings
+    exposed-modules:
+      GHC.TypeNats.Singletons,
+      GHC.TypeNats.Extra,
+
+      Data.Bool.Singletons,
+      Data.Unit.Singletons,
+
+      Data.Finite.Singletons,
+      Data.Finite.Extra
+    build-depends:
+      base ^>=4.18.0.0,
+      finite-typelits >= 0.2.0.0,
+      singletons >= 3.0.2,
+      ghc-typelits-natnormalise,
+      ghc-typelits-knownnat
+    hs-source-dirs:   src
+    default-language: GHC2021

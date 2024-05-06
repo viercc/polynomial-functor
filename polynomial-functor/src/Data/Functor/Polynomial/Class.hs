@@ -29,11 +29,11 @@ import GHC.Generics
 import Data.Coerce (coerce)
 import Data.Kind (Type)
 import Data.Type.Equality ((:~:)(..))
-import GHC.TypeNats
+import GHC.TypeNats (Nat, withKnownNat)
 
 import Data.Finitary
 import Data.Finite
-import Data.Finite.Extra (absurdFinite, boringFinite, combineSumS, separateSumS)
+import Data.Finite.Extra
 import qualified Data.Vector.Sized as SV
 
 import Data.Functor.Pow
@@ -236,12 +236,6 @@ instance (Polynomial f, Polynomial g) => Polynomial (Day f g) where
     fromPoly (P (TagDay tagF tagG) repFG) =
         let op n m = repFG $ combineProductS (toSNat tagF) (toSNat tagG) (n,m)
         in Day (fromPoly (P tagF id)) (fromPoly (P tagG id)) op
-
-separateProductS :: SNat n -> SNat m -> Finite (n * m) -> (Finite n, Finite m)
-separateProductS sn _ = withKnownNat sn separateProduct
-
-combineProductS :: SNat n -> SNat m -> (Finite n, Finite m) -> Finite (n * m)
-combineProductS sn _ = withKnownNat sn combineProduct
 
 -- | @fromPoly = toPoly = id@
 instance HasSNat tag => Polynomial (Poly tag) where

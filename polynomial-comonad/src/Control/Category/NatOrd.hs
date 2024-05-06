@@ -21,8 +21,8 @@ import Data.Kind (Type)
 
 import Data.Proxy (Proxy(..))
 
-import GHC.TypeNats
-import GHC.TypeLits.Witnesses (pattern Succ, pattern Zero)
+import GHC.TypeNats hiding (pattern SNat)
+import GHC.TypeNats.Extra
 
 import Data.Finite
 import Control.Category.Dual (Dual)

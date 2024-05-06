@@ -1,8 +1,6 @@
 packages: */*.cabal
 
-allow-newer: all
-
 source-repository-package
-    type: git
-    location: https://github.com/viercc/typelits-witnesses.git
-    tag: 82f43921156a6f6c8f4216b4ada0dab17098994e
+    type:git
+    location: https://notabug.org/viercc/finitary.git
+    tag: 2c296f989912b917c1bebc62511b1e48eda562d5
