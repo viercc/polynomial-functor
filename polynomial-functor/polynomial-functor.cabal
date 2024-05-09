@@ -42,6 +42,7 @@ library
         Data.Functor.Polynomial.Class,
         Data.Functor.Pow,
         Data.GADT.HasSNat,
+        Data.GADT.HasFinitary,
         Data.GADT.Compare.Extra
     build-depends: 
         base >= 4.17 && < 4.20

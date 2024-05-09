@@ -29,16 +29,16 @@ import GHC.Generics
 import Data.Coerce (coerce)
 import Data.Kind (Type)
 import Data.Type.Equality ((:~:)(..))
-import GHC.TypeNats (Nat, withKnownNat)
 
 import Data.Finitary
-import Data.Finite
-import Data.Finite.Extra
 import qualified Data.Vector.Sized as SV
 
 import Data.Functor.Pow
 import Data.Functor.Polynomial.Tag
 import Data.Functor.Polynomial
+import Data.Void
+import Data.GADT.HasFinitary (toInhabitants)
+import GHC.TypeNats.Extra (SNat(SNat))
 
 -- | A class for 'Functor' which can be represented as 'Poly'.
 --   
@@ -46,37 +46,37 @@ import Data.Functor.Polynomial
 --   
 --   > toPoly . fromPoly = id
 --   > fromPoly . toPoly = id
-class (Functor f, HasSNat (Tag f)) => Polynomial f where
-  type Tag f :: Nat -> Type
+class (Functor f) => Polynomial f where
+  type Tag f :: Type -> Type
 
   toPoly :: f x -> Poly (Tag f) x
   fromPoly :: Poly (Tag f) x -> f x
 
-instance Finitary r => Polynomial ((->) r) where
-  type Tag ((->) r) = (:~:) (Cardinality r)
+instance Polynomial ((->) r) where
+  type Tag ((->) r) = (:~:) r
 
-  toPoly f = P Refl (f . fromFinite)
-  fromPoly (P Refl f) r = f (toFinite r)
+  toPoly = P Refl
+  fromPoly (P Refl f) = f
 
 ---- Instances ----
 instance Polynomial Maybe where
   type Tag Maybe = TagMaybe
 
   toPoly mx = case mx of
-    Nothing -> P TagNothing absurdFinite
+    Nothing -> P TagNothing absurd
     Just x  -> P TagJust (const x)
   fromPoly (P tag rep) = case tag of
     TagNothing -> Nothing
-    TagJust -> Just (rep boringFinite)
+    TagJust -> Just (rep ())
 
 instance Polynomial [] where
-  type Tag [] = SNat
+  type Tag [] = TagList
 
-  toPoly :: forall x. [x] -> Poly SNat x
-  toPoly xs = SV.withSizedList xs $ \v -> P SNat (SV.index v)
+  toPoly :: forall x. [x] -> Poly TagList x
+  toPoly xs = SV.withSizedList xs $ \v -> P TagList (SV.index v)
 
-  fromPoly :: forall x. Poly SNat x -> [x]
-  fromPoly (P sn f) = f <$> withKnownNat sn finites
+  fromPoly :: forall x. Poly TagList x -> [x]
+  fromPoly (P sn f) = f <$> toInhabitants sn
 
 instance Polynomial V1 where
   type Tag V1 = TagV
@@ -84,27 +84,27 @@ instance Polynomial V1 where
   fromPoly (P v _) = case v of { }
 
 instance Polynomial U1 where
-  type Tag U1 = TagFn 0
+  type Tag U1 = TagFn Void
 
-  toPoly _ = P Refl absurdFinite
+  toPoly _ = P Refl absurd
   fromPoly _ = U1
 
 instance Polynomial Proxy where
-  type Tag Proxy = TagFn 0
+  type Tag Proxy = TagFn Void
 
-  toPoly _ = P Refl absurdFinite
+  toPoly _ = P Refl absurd
   fromPoly _ = Proxy
 
 instance Polynomial (K1 i c) where
   type Tag (K1 i c) = TagK c
 
-  toPoly (K1 c) = P (TagK c) absurdFinite
+  toPoly (K1 c) = P (TagK c) absurd
   fromPoly (P (TagK c) _) = K1 c
 
 instance Polynomial (Const c) where
   type Tag (Const c) = TagK c
 
-  toPoly (Const c) = P (TagK c) absurdFinite
+  toPoly (Const c) = P (TagK c) absurd
   fromPoly (P (TagK c) _) = Const c
 
 instance Polynomial f => Polynomial (M1 i c f) where
@@ -118,16 +118,16 @@ instance Polynomial f => Polynomial (Rec1 f) where
   toPoly = toPoly . unRec1
 
 instance Polynomial Par1 where
-  type Tag Par1 = TagFn 1
+  type Tag Par1 = TagFn ()
 
   toPoly (Par1 x) = P Refl (const x)
-  fromPoly (P Refl x') = Par1 (x' boringFinite)
+  fromPoly (P Refl x') = Par1 (x' ())
 
 instance Polynomial Identity where
-  type Tag Identity = TagFn 1
+  type Tag Identity = TagFn ()
 
   toPoly (Identity x) = P Refl (const x)
-  fromPoly (P Refl e) = Identity (e boringFinite)
+  fromPoly (P Refl e) = Identity (e ())
 
 instance (Polynomial f, Polynomial g) => Polynomial (f :+: g) where
   type Tag (f :+: g) = TagSum (Tag f) (Tag g)
@@ -159,12 +159,11 @@ instance (Polynomial f, Polynomial g) => Polynomial (f :*: g) where
   toPoly (fx :*: gx) =
     case (toPoly fx, toPoly gx) of
       (P tagF repF, P tagG repG) ->
-        P (TagMul tagF tagG) (either repF repG . separateSumS (toSNat tagF) (toSNat tagG))
+        P (TagMul tagF tagG) (either repF repG)
 
   fromPoly (P (TagMul tagF tagG) rep) =
-    let combine = combineSumS (toSNat tagF) (toSNat tagG)
-        pf = P tagF (rep . combine . Left)
-        pg = P tagG (rep . combine . Right)
+    let pf = P tagF (rep . Left)
+        pg = P tagG (rep . Right)
      in fromPoly pf :*: fromPoly pg
 
 instance (Polynomial f, Polynomial g) => Polynomial (Product f g) where
@@ -182,36 +181,34 @@ instance (Polynomial f) => Polynomial (Pow n f) where
   type Tag (Pow n f) = TagPow n (Tag f)
 
   toPoly :: forall x. Pow n f x -> Poly (TagPow n (Tag f)) x
-  toPoly Pow0 = P ZeroTag absurdFinite
-  toPoly (PowSnoc fs f) = case (toPoly fs, toPoly f) of
-      (P tagFs repFs, P tagF repF) ->
-        P (tagFs :+| tagF) (either repFs repF . separateSumS (toSNat tagFs) (toSNat tagF))
+  toPoly Pow0 = P ZeroTag absurd
+  toPoly (PowCons f fs) = case (toPoly f, toPoly fs) of
+      (P tagF repF, P tagFs repFs) ->
+        P (tagF :+| tagFs) (either repF repFs)
 
   fromPoly :: forall x. Poly (TagPow n (Tag f)) x -> Pow n f x
   fromPoly (P tag rep) = case tag of
     ZeroTag -> Pow0
-    tagFs :+| tagF ->
-        let combine = combineSumS (toSNat tagFs) (toSNat tagF)
-            fs = fromPoly (P tagFs (rep . combine . Left))
-            f  = fromPoly (P tagF  (rep . combine . Right))
-        in PowSnoc fs f
+    tagF :+| tagFs ->
+        let f  = fromPoly (P tagF  (rep . Left))
+            fs = fromPoly (P tagFs (rep . Right))
+        in PowCons f fs
 
-instance (Polynomial f, Polynomial g) => Polynomial (f :.: g) where
+instance (Polynomial f, HasFinitary (Tag f), Polynomial g) => Polynomial (f :.: g) where
   type Tag (f :.: g) = TagComp (Tag f) (Tag g)
 
   toPoly :: forall x. (f :.: g) x -> Poly (TagComp (Tag f) (Tag g)) x
   toPoly (Comp1 fgy) = case toPoly fgy of
     P tagF repF ->
-      case toPoly (functionToPow (toSNat tagF) repF) of
+      case withFinitary tagF (toPoly (functionToPow SNat (repF . fromFinite))) of
         P tagPowG repPow -> P (TagComp tagF tagPowG) repPow
 
   fromPoly :: forall x. Poly (TagComp (Tag f) (Tag g)) x -> (f :.: g) x
   fromPoly (P (TagComp tagF tagPowG) rep) =
     let repF = powToFunction $ fromPoly (P tagPowG rep)
-    in  Comp1 $ fromPoly (P tagF repF)
+    in  withFinitary tagF $ Comp1 $ fromPoly (P tagF (repF . toFinite))
 
-
-instance (Polynomial f, Polynomial g) => Polynomial (Compose f g) where
+instance (Polynomial f, HasFinitary (Tag f), Polynomial g) => Polynomial (Compose f g) where
   type Tag (Compose f g) = TagComp (Tag f) (Tag g)
 
   toPoly = toPoly . toGenerics
@@ -231,21 +228,21 @@ instance (Polynomial f, Polynomial g) => Polynomial (Day f g) where
     toPoly (Day fa gb op) = case (toPoly fa, toPoly gb) of
         (P tagF repF, P tagG repG) ->
             let repFG (n,m) = op (repF n) (repG m) 
-            in P (TagDay tagF tagG) (repFG . separateProductS (toSNat tagF) (toSNat tagG))
+            in P (TagDay tagF tagG) repFG
 
     fromPoly (P (TagDay tagF tagG) repFG) =
-        let op n m = repFG $ combineProductS (toSNat tagF) (toSNat tagG) (n,m)
+        let op n m = repFG (n,m)
         in Day (fromPoly (P tagF id)) (fromPoly (P tagG id)) op
 
 -- | @fromPoly = toPoly = id@
-instance HasSNat tag => Polynomial (Poly tag) where
+instance Polynomial (Poly tag) where
   type Tag (Poly tag) = tag
 
   fromPoly = id
   toPoly = id
 
 ---- Generic definitions ----
-instance (Generic1 f, HasSNat (Tag (Rep1 f)), Polynomial (Rep1 f)) => Polynomial (Generically1 f) where
+instance (Generic1 f, Polynomial (Rep1 f)) => Polynomial (Generically1 f) where
   type Tag (Generically1 f) = Tag (Rep1 f)
 
   toPoly (Generically1 fx) = toPoly (from1 fx)

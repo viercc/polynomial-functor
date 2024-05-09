@@ -10,13 +10,15 @@
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE NoStarIsType #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 {- | This module provides a way to represent \"tag\" of various polynomial data types. For example,
 a GADT 'TagMaybe' represents a functor of the same shape of 'Maybe'.
 
 > data TagMaybe n where
->    TagNothing :: TagMaybe 0 -- ^ Nothing takes 0 parameter
->    TagJust    :: TagMaybe 1 -- ^ Just takes 1 paramerer
+>    TagNothing :: TagMaybe Void -- ^ Nothing takes 0 parameter
+>    TagJust    :: TagMaybe ()   -- ^ Just takes 1 paramerer
 
 The class 'HasSNat' abstracts such GADTs in a uniform way.
 
@@ -34,17 +36,20 @@ In fact, each tag corresponds to a unique value of @F ()@.
 -}
 module Data.Functor.Polynomial.Tag(
   -- * The type class for tags
-  HasSNat(..),
-  
+  HasFinitary(..),
+
   -- * Tags
   TagMaybe(..),
+  TagList(..),
+
   TagFn, TagV(), TagK(..), TagSum, TagMul(..),
   TagPow(..), geqPow, gcomparePow,
   TagComp(..),
   TagDay(..),
 
   -- * Reexports
-  SNat(SNat, Succ, Zero),
+
+  -- SNat(SNat, Succ, Zero),
   GShow(..), GEq(..), GCompare(..), GOrdering(..)
 ) where
 
@@ -54,52 +59,31 @@ import Data.Type.Equality ((:~:)(..))
 import GHC.Generics ( type (:+:)(..) )
 
 import GHC.TypeNats hiding (pattern SNat)
-import GHC.TypeNats.Extra
+import GHC.TypeNats.Extra (SNat(SNat))
 
-import Data.GADT.HasSNat
+import Data.GADT.HasFinitary
 import Data.GADT.Show
 import Data.GADT.Compare
     ( defaultCompare, defaultEq, GCompare(..), GEq(..), GOrdering(..) )
 import Data.GADT.Compare.Extra ( fromOrdering, (>>?) )
+import Data.Void
+import Data.Finitary (Finitary(..))
+import Data.Finite (Finite)
 
--- $note
---
---   An instance @'HasSNat' t@ indicates @t n@ contains sufficient data
---   to construct the @'SNat' n@ value.
---
---   For example, the following GADT defines a type with @HasSNat@ instance.
---   
---   > data T n where
---   >     A :: T 0
---   >     B :: T 2
---   >     C :: Bool -> T 2
---   >
---   > instance HasSNat T where
---   >    toSNat A = SNat :: SNat 0
---   >    toSNat B = SNat :: SNat 1
---   >    toSNat (C _) = SNat :: SNat 2
---   
---   Such @t@ can be seen as a representation of a type @U@ equipped with a function @α :: U -> Nat@,
---   where each of @t n@ is a inverse images of a function @α :: U -> Nat@. In the above example, @T@ represents @(U,α) below.@ 
---   
---   > data U = A' | B' | C' False | C' True
---   > α A' = 0
---   > α B' = 1
---   > α (C' False) = α (C' True) = 2
-
+import Data.Functor.Classes (showsUnaryWith)
 
 -- | Tag of 'Maybe'.
 data TagMaybe n where
-    TagNothing :: TagMaybe 0
-    TagJust    :: TagMaybe 1
+    TagNothing :: TagMaybe Void
+    TagJust    :: TagMaybe ()
 
 deriving instance Eq (TagMaybe n)
 deriving instance Ord (TagMaybe n)
 deriving instance Show (TagMaybe n)
 
-instance HasSNat TagMaybe where
-    toSNat TagNothing = SNat
-    toSNat TagJust = SNat
+instance HasFinitary TagMaybe where
+    withFinitary TagNothing body = body
+    withFinitary TagJust body = body
 
 instance GEq TagMaybe where
     geq TagNothing TagNothing = Just Refl
@@ -115,31 +99,61 @@ instance GCompare TagMaybe where
 instance GShow TagMaybe where
     gshowsPrec = showsPrec
 
--- | @TagFn n@ represents @((), const n :: () -> Nat)@.
+data TagList a where
+  TagList :: KnownNat n => TagList (Finite n)
+
+deriving instance Eq (TagList a)
+deriving instance Ord (TagList a)
+
+instance Show (TagList a) where
+  showsPrec = gshowsPrec
+
+instance HasFinitary TagList where
+  withFinitary TagList body = body
+
+instance GEq TagList where
+  geq (TagList @n) (TagList @m) =
+    let sn = SNat :: SNat n
+        sm = SNat :: SNat m
+    in case geq sn sm of
+          Nothing -> Nothing
+          Just Refl -> Just Refl
+
+instance GCompare TagList where
+  gcompare (TagList @n) (TagList @m) =
+    let sn = SNat :: SNat n
+        sm = SNat :: SNat m
+    in case gcompare sn sm of
+          GLT -> GLT
+          GEQ -> GEQ
+          GGT -> GGT
+
+instance GShow TagList where
+  gshowsPrec p (TagList @n) = showsUnaryWith (const (++)) "TagList" p ("@" ++ show (natVal @n SNat))
+
+-- | @TagFn n@ represents @((), const n :: () -> Type)@.
 --
---   This is the tag of @(->) r@ functor, where @r@ is 'Data.Finitary.Finitary' type of cardinality @n@.
---
---   > TagFn (Cardinality r)   -- Tag of ((->) r)
+--   This is the tag of @(->) r@ functor.
 --
 --   It's also the tag of 'Data.Proxy.Proxy' and 'Data.Functor.Identity',
 --   by being isomorphic to @(->) Void@ and @(->) ()@ respectively.
 --
---   > TagFn 0   -- Tag of Proxy
---   > TagFn 1   -- Tag of Identity
+--   > TagFn Void   -- Tag of Proxy
+--   > TagFn ()     -- Tag of Identity
 type TagFn = (:~:)
 
 -- | @TagV n@ is an empty type for any @n@. It represents @(∅, α = absurd :: ∅ -> Nat)@. 
 --
 --   This is the tag of 'GHC.Generics.V1'.
-type TagV :: Nat -> Type
+type TagV :: Type -> Type
 data TagV n
   deriving (Eq, Ord, Show)
 
 absurdTagV :: TagV n -> any
 absurdTagV v = case v of { }
 
-instance HasSNat TagV where
-  toSNat = absurdTagV
+instance HasFinitary TagV where
+  withFinitary v _ = absurdTagV v
 
 instance GEq TagV where
   geq = absurdTagV
@@ -150,21 +164,21 @@ instance GCompare TagV where
 instance GShow TagV where
   gshowsPrec = showsPrec
 
--- | @TagK c n@ represents @(c, α)@, where @α@ is a constant function to zero:
+-- | @TagK c n@ represents @(c, α)@, where @α@ is a constant function to @Void@:
 --   
---   > α = const 0 :: c -> Nat
+--   > α = const Void :: c -> Type
 --   
 --   This is the tag of 'Data.Functor.Const'.
-type TagK :: Type -> Nat -> Type
+type TagK :: Type -> Type -> Type
 data TagK c n where
-  TagK :: c -> TagK c 0
+  TagK :: c -> TagK c Void
 
 deriving instance Eq c => Eq (TagK c n)
 deriving instance Ord c => Ord (TagK c n)
 deriving instance Show c => Show (TagK c n)
 
-instance HasSNat (TagK c) where
-  toSNat (TagK _) = SNat
+instance HasFinitary (TagK c) where
+  withFinitary (TagK _) body = body
 
 instance Eq c => GEq (TagK c) where
   geq (TagK c) (TagK c')
@@ -203,10 +217,11 @@ type TagSum = (:+:)
 --   
 --   This is the tag of @f :*: g@ when @t1, t2@ is the tag of @f, g@ respectively.
 data TagMul f g x where
-  TagMul :: !(f x) -> !(g y) -> TagMul f g (x + y)
+  TagMul :: !(f x) -> !(g y) -> TagMul f g (Either x y)
 
-instance (HasSNat t1, HasSNat t2) => HasSNat (TagMul t1 t2) where
-  toSNat (TagMul t1 t2) = toSNat t1 %+ toSNat t2
+instance (HasFinitary t1, HasFinitary t2) => HasFinitary (TagMul t1 t2) where
+  withFinitary (TagMul t1 t2) body =
+    withFinitary t1 $ withFinitary t2 body
 
 deriving instance (forall n. Show (t1 n), forall n. Show (t2 n)) => Show (TagMul t1 t2 m)
 instance (forall n. Show (t1 n), forall n. Show (t2 n)) => GShow (TagMul t1 t2) where
@@ -235,18 +250,18 @@ instance (GCompare t1, GCompare t2) => GCompare (TagMul t1 t2) where
 --
 --   This is the tag of @'Data.Functor.Polynomial.Pow' n f@ when @t@ is the tag of @f@.
 data TagPow n t xs where
-  ZeroTag :: TagPow 0 t 0
-  (:+|)   :: TagPow n t xs -> t x -> TagPow (n + 1) t (xs + x)
+  ZeroTag :: TagPow 0 t Void
+  (:+|)   :: t x -> TagPow n t xs -> TagPow (n + 1) t (Either x xs)
 
-infixl 6 :+|
+infixr 6 :+|
 
 deriving instance (forall n. Show (t n)) => Show (TagPow m t xs)
 instance (forall n. Show (t n)) => GShow (TagPow m t) where
   gshowsPrec = showsPrec
 
-instance (HasSNat t) => HasSNat (TagPow n t) where
-  toSNat ZeroTag = Zero
-  toSNat (l :+| r) = toSNat l %+ toSNat r
+instance (HasFinitary t) => HasFinitary (TagPow n t) where
+  withFinitary ZeroTag body = body
+  withFinitary (l :+| r) body = withFinitary l (withFinitary r body)
 
 instance GEq t => GEq (TagPow n t) where
   geq t t' = fmap snd (geqPow t t')
@@ -256,7 +271,7 @@ instance GEq t => Eq (TagPow n t xs) where
 
 geqPow :: GEq t => TagPow n t xs -> TagPow n' t xs' -> Maybe (n :~: n', xs :~: xs')
 geqPow ZeroTag ZeroTag = Just (Refl, Refl)
-geqPow (ts :+| t) (ts' :+| t') =
+geqPow (t :+| ts) (t' :+| ts') =
   do Refl <- geq t t'
      (Refl, Refl) <- geqPow ts ts'
      pure (Refl, Refl)
@@ -272,15 +287,15 @@ gcomparePow :: GCompare t => TagPow n t xs -> TagPow n' t xs' -> GOrdering '(n,x
 gcomparePow ZeroTag ZeroTag = GEQ
 gcomparePow ZeroTag (_ :+| _) = GLT
 gcomparePow (_ :+| _) ZeroTag = GGT
-gcomparePow (ts :+| t) (ts' :+| t') = gcomparePow ts ts' >>? gcompare t t' >>? GEQ
+gcomparePow (t :+| ts) (t' :+| ts') = gcompare t t' >>? gcomparePow ts ts' >>? GEQ
 
 -- | When @t, u@ is the tag of @f, g@ respectively,
 --   @TagComp t u@ is the tag of @f :.: g@.
 data TagComp t u n where
-  TagComp :: t a -> TagPow a u n -> TagComp t u n
+  TagComp :: t a -> TagPow (Cardinality a) u n -> TagComp t u n
 
-instance (HasSNat t, HasSNat u) => HasSNat (TagComp t u) where
-  toSNat (TagComp t pu) = withKnownNat (toSNat t) (toSNat pu)
+instance (HasFinitary u) => HasFinitary (TagComp t u) where
+  withFinitary (TagComp _ pu) body = withFinitary pu body
 
 deriving instance (forall n. Show (t n), forall n. Show (u n)) => Show (TagComp t u m)
 instance (forall n. Show (t n), forall n. Show (u n)) => GShow (TagComp t u) where
@@ -301,12 +316,12 @@ instance (GCompare t, GCompare u) => GCompare (TagComp t u) where
 instance (GCompare t, GCompare u) => Ord (TagComp t u n) where
   compare = defaultCompare
 
-type TagDay :: (Nat -> Type) -> (Nat -> Type) -> Nat -> Type
+type TagDay :: (Type -> Type) -> (Type -> Type) -> Type -> Type
 data TagDay t u n where
-  TagDay :: t n -> u m -> TagDay t u (n * m)
+  TagDay :: t n -> u m -> TagDay t u (n, m)
 
-instance (HasSNat t, HasSNat u) => HasSNat (TagDay t u) where
-  toSNat (TagDay t u) = toSNat t %* toSNat u
+instance (HasFinitary t, HasFinitary u) => HasFinitary (TagDay t u) where
+  withFinitary (TagDay t u) body = withFinitary t (withFinitary u body)
 
 deriving instance (forall n. Show (t n), forall n. Show (u n)) => Show (TagDay t u m)
 

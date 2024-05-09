@@ -9,40 +9,42 @@ import Control.Monad (guard)
 import Data.Functor.Polynomial
 import GHC.Generics
 import Data.Finitary
+import Data.GADT.HasFinitary
+import Data.Functor.Polynomial.Class
 
 main :: IO ()
 main = do
 
     putStrLn "[]"
-    guard $ all (\x -> x == roundTrip x) testList
     mapM_ (putStrLn . showPoly . toPoly) testList
+    guard $ all (\x -> x == roundTrip x) testList
 
     putStrLn "Maybe"
-    guard $ all (\x -> x == roundTrip x) testMaybe
     mapM_ (putStrLn . showPoly . toPoly) testMaybe
+    guard $ all (\x -> x == roundTrip x) testMaybe
 
     putStrLn "[] :.: []"
+    mapM_ (\x -> let px = toPoly x in print x >> putStrLn (showPoly px) >> print (fromPoly px `asTypeOf` x)) testListOfList
     guard $ all (\x -> x == roundTrip x) testListOfList
-    mapM_ (putStrLn . showPoly . toPoly) testListOfList
 
     putStrLn "Either"
-    guard $ all (\x -> x == roundTrip x) testEither
     mapM_ (putStrLn . showPoly . toPoly) testEither
+    guard $ all (\x -> x == roundTrip x) testEither
 
     putStrLn "->"
-    guard $ all (\x -> x `eqFn` roundTrip x) testFn
     mapM_ (putStrLn . showPoly . toPoly) testFn
+    guard $ all (\x -> x `eqFn` roundTrip x) testFn
 
     putStrLn "Generic F"
-    guard $ all (\x -> x == genericRoundTrip x) testF
     mapM_ (putStrLn . showPoly . toPoly . from1) testF
+    guard $ all (\x -> x == genericRoundTrip x) testF
 
     print $ [ x == y | x <- testF, y <- testF ]
 
-showPoly :: (forall n. Show (tag n), HasSNat tag, Show x) => Poly tag x -> String
+showPoly :: (forall n. Show (tag n), HasFinitary tag, Show x) => Poly tag x -> String
 showPoly (P tag rep) = "P{ tag = " ++ show tag ++ ", repList=" ++ repStr ++"}"
   where
-    repStr = case toSNat tag of SNat -> show (map rep inhabitants)
+    repStr = show (map rep (toInhabitants tag))
 
 roundTrip :: Polynomial f => f a -> f a
 roundTrip = fromPoly . toPoly
