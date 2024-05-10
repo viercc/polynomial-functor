@@ -40,6 +40,7 @@ library
       finite-typelits,
       singletons >= 3.0.2,
       singletons-minibase,
+      polynomial-functor,
       ghc-typelits-natnormalise,
       ghc-typelits-knownnat
     hs-source-dirs:   src

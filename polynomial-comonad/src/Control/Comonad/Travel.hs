@@ -4,6 +4,8 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {- |
 
 Implementation of
@@ -38,6 +40,9 @@ import Data.Singletons.Sigma
 import Prelude hiding (id, (.))
 import Control.Monad.Trans.State (State, state)
 
+import Data.Functor.Polynomial
+import Data.Functor.Polynomial.Class
+
 type Travel :: (k -> k -> Type) -> Type -> Type
 data Travel (cat :: k -> k -> Type) r where
   MkTravel ::
@@ -55,6 +60,18 @@ instance (Category cat) => Comonad (Travel (cat :: k -> k -> Type)) where
 
   duplicate :: forall r. Travel cat r -> Travel cat (Travel cat r)
   duplicate (MkTravel sa k) = MkTravel sa \(sb :&: ab) -> MkTravel sb \(sc :&: bc) -> k (sc :&: (bc . ab))
+
+type TravelTag :: (k -> k -> Type) -> Type -> Type
+data TravelTag cat x where
+  TravelFrom
+    :: forall k (cat :: k -> k -> Type) (a :: k).
+       Sing a -> TravelTag cat (Sigma k (TyCon (cat a)))
+
+instance Polynomial (Travel cat) where
+  type Tag (Travel cat) = TravelTag cat
+
+  toPoly (MkTravel sa f) = P (TravelFrom sa) f
+  fromPoly (P (TravelFrom sa) f) = MkTravel sa f
 
 -- * Flows and Charts
 
