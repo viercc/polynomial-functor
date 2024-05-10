@@ -20,19 +20,6 @@ a GADT 'TagMaybe' represents a functor of the same shape of 'Maybe'.
 >    TagNothing :: TagMaybe Void -- ^ Nothing takes 0 parameter
 >    TagJust    :: TagMaybe ()   -- ^ Just takes 1 paramerer
 
-The class 'HasSNat' abstracts such GADTs in a uniform way.
-
-Any instance @t@ of @HasSNat@ is a GADTs representing a type of \"tags\" of a polynomial functor.
-But note that a \"tag\" is not the same thing to the constructors of a @data@ type. For example,
-the following one-constructor type @F@ has four tags.
-
-> data F x = F Bool (Maybe x) x
-
-The four tags corresponds to the ways of distinguish @F x@ without comparing @x@ parts.
-In fact, each tag corresponds to a unique value of @F ()@.
-
-> [ F False Nothing (), F True Nothing (), F False (Just ()) (), F True (Just ()) () ]
-
 -}
 module Data.Functor.Polynomial.Tag(
   -- * The type class for tags
@@ -49,7 +36,6 @@ module Data.Functor.Polynomial.Tag(
 
   -- * Reexports
 
-  -- SNat(SNat, Succ, Zero),
   GShow(..), GEq(..), GCompare(..), GOrdering(..)
 ) where
 

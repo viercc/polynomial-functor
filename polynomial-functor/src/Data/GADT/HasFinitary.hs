@@ -10,9 +10,6 @@ import Data.Type.Equality ((:~:) (..))
 class HasFinitary tag where
   withFinitary :: tag n -> (Finitary n => r) -> r
 
-withFinitary' :: HasFinitary tag => tag a -> (Finitary a => SNat (Cardinality a) -> r) -> r
-withFinitary' ta f = withFinitary ta (f SNat)
-
 toSNat :: HasFinitary tag => tag a -> SNat (Cardinality a)
 toSNat ta = withFinitary ta SNat
 

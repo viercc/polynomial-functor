@@ -17,7 +17,6 @@ import Data.Type.Equality ((:~:)(..))
 
 import GHC.TypeNats hiding (SNat)
 import GHC.TypeNats.Extra
-import Data.Finite
 import qualified Data.Vector.Sized as SV
 
 import Data.GADT.Compare
@@ -45,8 +44,7 @@ instance HasFinitary tag => Foldable (Poly tag) where
     _    -> False
   length (P tag _) = fromIntegral (fromSNat (toSNat tag))
 
-  foldMap f (P tag rep) = withFinitary' tag $ \sn ->
-    foldMap (f . rep . fromFinite) (withKnownNat sn finites)
+  foldMap f (P tag rep) = foldMap (f . rep) (toInhabitants tag)
 
 instance HasFinitary tag => Traversable (Poly tag) where
   traverse f (P tag rep) = P tag <$> withFinitary tag (traverseFiniteFn f rep)

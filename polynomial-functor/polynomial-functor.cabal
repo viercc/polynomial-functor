@@ -41,7 +41,7 @@ library
         Data.Functor.Polynomial.Tag,
         Data.Functor.Polynomial.Class,
         Data.Functor.Pow,
-        Data.GADT.HasSNat,
+        --Data.GADT.HasSNat,
         Data.GADT.HasFinitary,
         Data.GADT.Compare.Extra
     build-depends: 
