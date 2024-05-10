@@ -15,7 +15,9 @@
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE EmptyDataDeriving #-}
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.Normalise #-}
-module Data.Functor.Polynomial.Class where
+module Data.Functor.Polynomial.Class(
+  Polynomial(..),
+) where
 
 import Data.Functor.Identity(Identity(..))
 import Data.Functor.Const
@@ -181,18 +183,35 @@ instance (Polynomial f) => Polynomial (Pow n f) where
   type Tag (Pow n f) = TagPow n (Tag f)
 
   toPoly :: forall x. Pow n f x -> Poly (TagPow n (Tag f)) x
-  toPoly Pow0 = P ZeroTag absurd
-  toPoly (PowCons f fs) = case (toPoly f, toPoly fs) of
-      (P tagF repF, P tagFs repFs) ->
-        P (tagF :+| tagFs) (either repF repFs)
+  toPoly Pow0 = P TagPow0 absurd
+  toPoly (PowNZ fs) = case toPoly fs of
+      (P tagF repF) -> P (TagPowNZ tagF) repF
 
   fromPoly :: forall x. Poly (TagPow n (Tag f)) x -> Pow n f x
   fromPoly (P tag rep) = case tag of
-    ZeroTag -> Pow0
-    tagF :+| tagFs ->
-        let f  = fromPoly (P tagF  (rep . Left))
-            fs = fromPoly (P tagFs (rep . Right))
-        in PowCons f fs
+    TagPow0 -> Pow0
+    TagPowNZ tagFs -> PowNZ (fromPoly (P tagFs rep))
+
+instance (Polynomial f) => Polynomial (Pow' n f) where
+  type Tag (Pow' n f) = TagPow' n (Tag f)
+
+  toPoly :: forall x. Pow' n f x -> Poly (TagPow' n (Tag f)) x
+  toPoly (Pow1 fx) = case toPoly fx of
+    P tag rep -> P (TagPow1 tag) rep
+  toPoly (PowEven fs1 fs2) = case (toPoly fs1, toPoly fs2) of
+    (P tag1 rep1, P tag2 rep2) -> P (TagPowEven tag1 tag2) (either rep1 rep2)
+  toPoly (PowOdd fx fs1 fs2) = case (toPoly fx, toPoly fs1, toPoly fs2) of
+    (P tag rep, P tag1 rep1, P tag2 rep2) -> P (TagPowOdd tag tag1 tag2) (either rep (either rep1 rep2))
+
+  fromPoly :: forall x. Poly (TagPow' n (Tag f)) x -> Pow' n f x
+  fromPoly (P tag rep) = case tag of
+    TagPow1 tag' -> Pow1 (fromPoly (P tag' rep))
+    TagPowEven tag1 tag2 -> PowEven (fromPoly (P tag1 (rep . Left))) (fromPoly (P tag2 (rep . Right)))
+    TagPowOdd tag' tag1 tag2 ->
+      let rep' = rep . Left
+          rep1 = rep . Right . Left
+          rep2 = rep . Right . Right
+      in PowOdd (fromPoly (P tag' rep')) (fromPoly (P tag1 rep1)) (fromPoly (P tag2 rep2))
 
 instance (Polynomial f, HasFinitary (Tag f), Polynomial g) => Polynomial (f :.: g) where
   type Tag (f :.: g) = TagComp (Tag f) (Tag g)

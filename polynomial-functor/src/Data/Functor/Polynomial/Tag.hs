@@ -46,17 +46,19 @@ import GHC.Generics ( type (:+:)(..) )
 
 import GHC.TypeNats hiding (pattern SNat)
 import GHC.TypeNats.Extra (SNat(SNat))
+import Data.Void
+import Data.Finitary (Finitary(..))
+import Data.Finite (Finite)
+import Data.Functor.Classes (showsUnaryWith)
 
 import Data.GADT.HasFinitary
 import Data.GADT.Show
 import Data.GADT.Compare
     ( defaultCompare, defaultEq, GCompare(..), GEq(..), GOrdering(..) )
 import Data.GADT.Compare.Extra ( fromOrdering, (>>?) )
-import Data.Void
-import Data.Finitary (Finitary(..))
-import Data.Finite (Finite)
 
-import Data.Functor.Classes (showsUnaryWith)
+
+import Data.Functor.Pow
 
 -- | Tag of 'Maybe'.
 data TagMaybe n where
@@ -227,53 +229,6 @@ instance (GCompare t1, GCompare t2) => Ord (TagMul t1 t2 n) where
 
 instance (GCompare t1, GCompare t2) => GCompare (TagMul t1 t2) where
   gcompare (TagMul t1 t2) (TagMul t1' t2') = gcompare t1 t1' >>? gcompare t2 t2' >>? GEQ
-
--- | When @t@ represents @(U,α :: U -> Nat)@,
---   @TagPow n t xs@ represents @α^n@ below:
---
---   > α^n :: U^n -> Nat
---   > α^n(u1, u2, ..., u_n) = α u1 + α u2 + ... + α u_n
---
---   This is the tag of @'Data.Functor.Polynomial.Pow' n f@ when @t@ is the tag of @f@.
-data TagPow n t xs where
-  ZeroTag :: TagPow 0 t Void
-  (:+|)   :: t x -> TagPow n t xs -> TagPow (n + 1) t (Either x xs)
-
-infixr 6 :+|
-
-deriving instance (forall n. Show (t n)) => Show (TagPow m t xs)
-instance (forall n. Show (t n)) => GShow (TagPow m t) where
-  gshowsPrec = showsPrec
-
-instance (HasFinitary t) => HasFinitary (TagPow n t) where
-  withFinitary ZeroTag body = body
-  withFinitary (l :+| r) body = withFinitary l (withFinitary r body)
-
-instance GEq t => GEq (TagPow n t) where
-  geq t t' = fmap snd (geqPow t t')
-
-instance GEq t => Eq (TagPow n t xs) where
-  (==) = defaultEq
-
-geqPow :: GEq t => TagPow n t xs -> TagPow n' t xs' -> Maybe (n :~: n', xs :~: xs')
-geqPow ZeroTag ZeroTag = Just (Refl, Refl)
-geqPow (t :+| ts) (t' :+| ts') =
-  do Refl <- geq t t'
-     (Refl, Refl) <- geqPow ts ts'
-     pure (Refl, Refl)
-geqPow _ _ = Nothing
-
-instance GCompare t => GCompare (TagPow n t) where
-  gcompare t t' = gcomparePow t t' >>? GEQ
-
-instance GCompare t => Ord (TagPow n t xs) where
-  compare = defaultCompare
-
-gcomparePow :: GCompare t => TagPow n t xs -> TagPow n' t xs' -> GOrdering '(n,xs) '(n',xs')
-gcomparePow ZeroTag ZeroTag = GEQ
-gcomparePow ZeroTag (_ :+| _) = GLT
-gcomparePow (_ :+| _) ZeroTag = GGT
-gcomparePow (t :+| ts) (t' :+| ts') = gcompare t t' >>? gcomparePow ts ts' >>? GEQ
 
 -- | When @t, u@ is the tag of @f, g@ respectively,
 --   @TagComp t u@ is the tag of @f :.: g@.
