@@ -30,6 +30,12 @@ library
       Control.Comonad.Travel.Store,
       Control.Comonad.Travel.Traced,
       Control.Comonad.Travel.NonEmpty,
+
+      Data.InternalQuiver,
+      Data.InternalCategory,
+      Data.InternalCategory.Discrete,
+      Data.InternalCategory.Clique,
+      Data.InternalCategory.PolyComonad
     -- other-modules:
     -- other-extensions:
     build-depends:
@@ -38,6 +44,7 @@ library
       transformers,
       kan-extensions,
       finite-typelits,
+      some,
       singletons >= 3.0.2,
       singletons-minibase,
       polynomial-functor,
