@@ -42,6 +42,9 @@ import Control.Monad.Trans.State (State, state)
 
 import Data.Functor.Polynomial
 import Data.Functor.Polynomial.Class
+import Data.Singletons.Decide
+import Data.Type.Equality
+import Data.GADT.Compare (GEq (..))
 
 type Travel :: (k -> k -> Type) -> Type -> Type
 data Travel (cat :: k -> k -> Type) r where
@@ -66,6 +69,14 @@ data TravelTag cat x where
   TravelFrom
     :: forall k (cat :: k -> k -> Type) (a :: k).
        Sing a -> TravelTag cat (Sigma k (TyCon (cat a)))
+
+instance SDecide k => TestEquality (TravelTag (cat :: k -> k -> Type)) where
+  testEquality (TravelFrom sa) (TravelFrom sb) = case sa %~ sb of
+    Proved Refl -> Just Refl
+    Disproved _ -> Nothing
+
+instance SDecide k => GEq (TravelTag (cat :: k -> k -> Type)) where
+  geq = testEquality
 
 instance Polynomial (Travel cat) where
   type Tag (Travel cat) = TravelTag cat

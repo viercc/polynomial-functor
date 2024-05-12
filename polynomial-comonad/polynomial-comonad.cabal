@@ -35,7 +35,8 @@ library
       Data.InternalCategory,
       Data.InternalCategory.Discrete,
       Data.InternalCategory.Clique,
-      Data.InternalCategory.PolyComonad
+      Data.InternalCategory.Morphism,
+      Data.InternalCategory.PolyComonad,
     -- other-modules:
     -- other-extensions:
     build-depends:
