@@ -47,7 +47,7 @@ library
     build-depends: 
         base >= 4.17 && < 4.20
       , finite-typelits
-      , finitary >= 2.1.1.1
+      , finitary >= 2.1.3.0
       , singletons-minibase
       , ghc-typelits-natnormalise
       , ghc-typelits-knownnat
