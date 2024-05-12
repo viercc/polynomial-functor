@@ -1,1 +1,6 @@
 packages: */*.cabal
+
+package *
+    haddock-hyperlink-source: True
+    documentation: True
+    haddock-html-location: http://hackage.haskell.org/packages/archive/$pkg/$version/doc/html
