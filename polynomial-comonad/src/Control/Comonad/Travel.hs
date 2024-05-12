@@ -18,6 +18,7 @@ module Control.Comonad.Travel
   (
     -- * Travel: Comonad from a Category
     Travel (..),
+    TravelTag (..),
 
     -- * Chart: Monad from a Category
     Flow (..),
