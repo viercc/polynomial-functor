@@ -30,6 +30,7 @@ library
       Control.Comonad.Travel.Store,
       Control.Comonad.Travel.Traced,
       Control.Comonad.Travel.NonEmpty,
+      Control.Monad.Flow,
 
       Data.InternalQuiver,
       Data.InternalCategory,

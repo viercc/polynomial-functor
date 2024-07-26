@@ -37,18 +37,18 @@ data List' a =
 Generally, a polynomial functor is a sum of some functors,
 where each of the summed functor is isomorphic to `r -> ??` functor with some exponent `r`.
 
-This package provides `Poly` type to represent polynomial functors in this uniform manner.
-Any polynomial functor with all finite exponent is isomorphic to `Poly tag` for some `tag :: Nat -> Type`.
+This package provides `Poly` type below, to represent general polynomial functors.
 
 ```haskell
-type Poly :: (Nat -> Type) -> Type -> Type
+type Poly :: (Type -> Type) -> Type -> Type
 data Poly tag x where
-  P :: tag n -> (Finite n -> x) -> Poly tag x
+  P :: tag a -> (a -> x) -> Poly tag x
 ```
 
 `Poly` supports operations definable on a polynomial functor.
 
-* `Poly tag` is always `Foldable` and `Traversable`
+* `Poly tag` is `Foldable` and `Traversable` if every inhabited `tag a` value witnesses
+  `Finitary a`.
 * `Eq (Poly tag x)` instance, using equality test on tag (`GEq tag`) and on parameter (`Eq x`)
 * `Ord (Poly tag x)` similarly
 
