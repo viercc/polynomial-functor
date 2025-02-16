@@ -36,7 +36,7 @@ executable finite-polynomial-example
     hs-source-dirs:   example
     main-is:          Main.hs
     build-depends:
-        base ^>=4.18.1.0,
+        base >=4.18.1.0,
         finite-polynomial
 
 test-suite finite-polynomial-test
@@ -51,6 +51,6 @@ test-suite finite-polynomial-test
       SemiringProp,
       SemigroupDo
     build-depends:
-        base ^>=4.18.1.0,
+        base >=4.18.1.0,
         singletons,
         finite-polynomial

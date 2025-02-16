@@ -25,7 +25,7 @@ library
       Data.Finite.Singletons,
       Data.Finite.Extra
     build-depends:
-      base ^>=4.18.0.0,
+      base >=4.18.0.0,
       finite-typelits >= 0.2.0.0,
       singletons >= 3.0.2,
       ghc-typelits-natnormalise,
