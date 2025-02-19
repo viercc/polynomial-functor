@@ -4,13 +4,13 @@ module Data.InternalCategory.Discrete where
 import Data.InternalCategory
     ( IQuiver(..), ICategory(..), Path(Path) )
 
-newtype IDiscrete a = IDiscrete a
+newtype Disc a = Disc a
     deriving stock (Show, Read)
     deriving newtype (Eq, Ord, Enum, Bounded)
 
-instance IQuiver a (IDiscrete a) where
-  src (IDiscrete x) = x
-  tgt (IDiscrete x) = x
+instance IQuiver a (Disc a) where
+  src (Disc x) = x
+  tgt (Disc x) = x
 
-instance Eq a => ICategory a (IDiscrete a) where
-  foldPath (Path x _ _) = IDiscrete x
+instance Eq a => ICategory a (Disc a) where
+  foldPath (Path x _ _) = Disc x

@@ -35,7 +35,7 @@ library
       Data.InternalQuiver,
       Data.InternalCategory,
       Data.InternalCategory.Discrete,
-      Data.InternalCategory.Indiscrete,
+      Data.InternalCategory.Codiscrete,
       Data.InternalCategory.Morphism,
       Data.InternalCategory.PolyComonad,
     -- other-modules:
