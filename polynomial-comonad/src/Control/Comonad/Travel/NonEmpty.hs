@@ -6,66 +6,62 @@
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.Normalise #-}
 
-module Control.Comonad.Travel.NonEmpty where
+module Control.Comonad.Travel.NonEmpty(
+  fromNonEmpty, toNonEmpty
+) where
 
+import Control.Category ((.))
 import Control.Category.Dual (Dual (..))
 import Control.Category.NatOrd
--- import orphans
-
 import Control.Comonad.Travel
 import Data.Foldable (Foldable (..))
-import Data.Kind (Type)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
+import Data.Singletons (TyCon)
 import Data.Singletons.Sigma (Sigma (..))
 import GHC.TypeNats
-import GHC.TypeNats.Extra (SNat (Succ, Zero), (%-))
+import GHC.TypeNats.Extra (SNat (Succ, Zero))
 import GHC.TypeNats.Singletons ()
 import Prelude hiding (id, (.))
+import Data.Some
 
-type Vec :: Nat -> Type -> Type
-data Vec n a where
-  Nil :: Vec 0 a
-  Cons :: a -> Vec n a -> Vec (1 + n) a
+viewNE :: NonEmpty a -> (forall n. SNat n -> (forall m. (m :<=: n) -> a) -> r) -> r
+viewNE as body = case NE.uncons as of
+  (a, Nothing) -> body Zero (singletonFn a)
+  (a, Just as') -> viewNE as' (\n f -> body (Succ n) (consFn a f))
 
-deriving instance Functor (Vec n)
+singletonFn :: a -> (forall m. (m :<=: 0) -> a)
+singletonFn a ReflLE = a
+singletonFn _ (SuccLE mn) = zero_neq_succ mn
 
-deriving instance Foldable (Vec n)
-
-vecLen :: Vec n a -> SNat n
-vecLen Nil = Zero
-vecLen (Cons _ as) = Succ (vecLen as)
-
-index :: (KnownNat n, KnownNat m) => Vec (1 + n) a -> m :<=: n -> a
-index Nil _ = error "impossible!"
-index (Cons a as) mn = case mn of
+consFn :: a -> (forall m. (m :<=: n) -> a) -> (forall m. (m :<=: 1 + n) -> a)
+consFn a f mn = case mn of
   ReflLE -> a
-  SuccLE mn' -> index as mn'
+  SuccLE mn' -> f mn'
 
-indices :: SNat n -> Vec n (Finite' n)
-indices Zero = Nil
-indices (Succ n) = Cons (withKnownNat n (Finite' ReflLE)) (shift' <$> indices n)
+indices :: SNat n -> NonEmpty (Some ((:>=:) n))
+indices Zero = Some (Dual ReflLE) :| []
+indices (Succ n) = Some (Dual ReflLE) :| fmap (mapSome succGE) (toList (indices n))
 
-data NonEmptyVec a where
-  NonEmptyVec :: Vec (1 + n) a -> NonEmptyVec a
+succGE :: (n :>=: m) -> (1 + n :>=: m)
+succGE (Dual mn) = Dual (SuccLE mn)
 
-fromNonEmpty :: NonEmpty a -> NonEmptyVec a
-fromNonEmpty as = viewNonEmpty as NonEmptyVec
-  where
-    viewNonEmpty :: NonEmpty a -> (forall n. Vec (1 + n) a -> r) -> r
-    viewNonEmpty xs body = case NE.uncons xs of
-      (x, Nothing) -> body (Cons x Nil)
-      (x, Just xs') -> viewNonEmpty xs' (\vec -> body (Cons x vec))
+fromNonEmpty :: NonEmpty a -> Travel (:>=:) a
+fromNonEmpty as = viewNE as $ \n f -> MkTravel n (\(_ :&: Dual mn) -> f mn)
 
-toNonEmpty :: NonEmptyVec a -> NonEmpty a
-toNonEmpty (NonEmptyVec as) = case as of
-  Nil -> error "impossible!"
-  Cons a as' -> a :| toList as'
+toNonEmpty :: Travel (:>=:) a -> NonEmpty a
+toNonEmpty (MkTravel n f) = (f . makeKey n) <$> indices n
 
-fromNonEmptyVec :: NonEmptyVec a -> Travel (:>=:) a
-fromNonEmptyVec (NonEmptyVec as) =
-  let n = vecLen as %- natSing @1
-   in MkTravel n (\(m :&: Dual mn) -> withKnownNat n $ withKnownNat m $ index as mn)
+makeKey :: SNat n -> Some ((:>=:) n) -> Sigma Nat (TyCon ((:>=:) n))
+makeKey sn (Some (Dual mn)) = getLower sn mn :&: Dual mn
 
-toNonEmptyVec :: Travel (:>=:) a -> NonEmptyVec a
-toNonEmptyVec (MkTravel n f) = NonEmptyVec ((\(Finite' mn) -> f (natSing :&: Dual mn)) <$> indices (Succ n))
+getLower :: SNat n -> (m :<=: n) -> SNat m
+getLower Zero mn = case mn of
+  ReflLE -> Zero
+  SuccLE mn' -> zero_neq_succ mn'
+getLower sn@(Succ sn') mn = case mn of
+  ReflLE -> sn
+  SuccLE mn' -> getLower sn' mn'
+
+zero_neq_succ :: forall p n a. (0 ~ (1 + n)) => p n -> a
+zero_neq_succ _ = error "impossible!"

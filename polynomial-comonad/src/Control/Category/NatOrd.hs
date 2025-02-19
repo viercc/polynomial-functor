@@ -33,6 +33,8 @@ data (:<=:) n m where
     ReflLE :: m :<=: m
     SuccLE :: !(m :<=: n) -> m :<=: (1 + n)
 
+infix 4 :<=:
+
 instance Category (:<=:) where
     id :: a :<=: a
     id = ReflLE
@@ -44,18 +46,15 @@ instance Category (:<=:) where
 -- | "greater than or equals"
 type (:>=:) = Dual (:<=:)
 
+infix 4 :>=:
+
 -- | Given a type-level @n :: Nat@, @Finite' n@ is the collection of all values
 --   of type @m :<=: n@ for some @m :: Nat@.
---
---   Since Each values of @m :<=: n@
 data Finite' n where
-    Finite' :: (KnownNat m, KnownNat n) => (m :<=: n) -> Finite' (1 + n)
+    Finite' :: (m :<=: n) -> Finite' (1 + n)
 
 shift' :: Finite' n -> Finite' (1 + n)
-shift' (Finite' @_ @n' le) = succKnownNat @n' $ Finite' (SuccLE le)
-
-succKnownNat :: (KnownNat n) => (KnownNat (1 + n) => r) -> r
-succKnownNat body = body
+shift' (Finite' le) = Finite' (SuccLE le)
 
 fromFinite :: forall n. KnownNat n => Finite n -> Finite' n
 fromFinite k = case natSing @n of
@@ -64,8 +63,8 @@ fromFinite k = case natSing @n of
         Nothing -> Finite' ReflLE
         Just k' -> shift' (fromFinite k')
 
-toFinite :: Finite' n -> Finite n
-toFinite (Finite' @n @m nm) = case nm of
+toFinite :: KnownNat n => Finite' n -> Finite n
+toFinite (Finite' nm) = case nm of
     ReflLE -> zeroFinite
     SuccLE n'm -> shift $ toFinite (Finite' n'm)
 
