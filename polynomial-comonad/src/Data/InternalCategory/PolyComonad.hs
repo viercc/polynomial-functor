@@ -6,7 +6,6 @@ module Data.InternalCategory.PolyComonad(
   Pos(..), Dir(..), identityDir, composeDir,
 ) where
 
-import Data.List (foldl')
 import Data.Maybe (isJust)
 
 import Control.Comonad

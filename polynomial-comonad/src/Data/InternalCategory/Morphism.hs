@@ -7,13 +7,13 @@ module Data.InternalCategory.Morphism(
 ) where
 
 import Prelude hiding ((.), id)
-import Data.List (foldl')
 import Data.Maybe (fromMaybe)
 import Control.Category
 
 import Data.Singletons
 import Data.Singletons.Decide
 import Data.InternalCategory
+    ( IQuiver(..), ICategory(..), Path(Path) )
 import Data.Kind (Type)
 
 -- | Sum of all morphisms in @cat@.

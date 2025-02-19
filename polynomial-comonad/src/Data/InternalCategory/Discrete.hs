@@ -1,8 +1,8 @@
 {-# LANGUAGE DerivingStrategies #-}
 module Data.InternalCategory.Discrete where
 
-import Data.InternalQuiver
 import Data.InternalCategory
+    ( IQuiver(..), ICategory(..), Path(Path) )
 
 newtype IDiscrete a = IDiscrete a
     deriving stock (Show, Read)
@@ -12,5 +12,5 @@ instance IQuiver a (IDiscrete a) where
   src (IDiscrete x) = x
   tgt (IDiscrete x) = x
 
-instance ICategory a (IDiscrete a) where
+instance Eq a => ICategory a (IDiscrete a) where
   foldPath (Path x _ _) = IDiscrete x

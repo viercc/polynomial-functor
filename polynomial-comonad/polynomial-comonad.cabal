@@ -23,7 +23,7 @@ library
       Control.Category.OneObject,
       Control.Category.Dual,
       Control.Category.NatOrd,
-      Control.Comonad.Action,
+      -- Control.Comonad.Action,
       Control.Comonad.Travel,
       Control.Comonad.Travel.Boolean,
       Control.Comonad.Travel.Env,
@@ -35,7 +35,7 @@ library
       Data.InternalQuiver,
       Data.InternalCategory,
       Data.InternalCategory.Discrete,
-      Data.InternalCategory.Clique,
+      Data.InternalCategory.Indiscrete,
       Data.InternalCategory.Morphism,
       Data.InternalCategory.PolyComonad,
     -- other-modules:
