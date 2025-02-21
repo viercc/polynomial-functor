@@ -19,6 +19,7 @@ module Control.Comonad.Travel
     Travel (..),
     TravelTag (..),
 
+    truncateTravel,
   )
 where
 
@@ -34,6 +35,8 @@ import Data.Functor.Polynomial.Class
 import Data.Singletons.Decide
 import Data.Type.Equality
 import Data.GADT.Compare (GEq (..))
+import Control.Comonad.Store (Store)
+import Control.Comonad.Store.Class (ComonadStore(..))
 
 -- | Make 'Polynomial' 'Comonad' from 'Category'.
 --
@@ -82,3 +85,11 @@ instance Polynomial (Travel cat) where
 
   toPoly (MkTravel sa f) = P (TravelFrom sa) f
   fromPoly (P (TravelFrom sa) f) = MkTravel sa f
+
+-- | Constructs @Travel cat@ from @Store (Demote k)@,
+--   which can be thought of as a @Travel cat@ but its arrows are
+--   forgotten.
+truncateTravel :: forall k (cat :: k -> k -> Type) (r :: Type).
+  (SingKind k) => Store (Demote k) r -> Travel cat r
+truncateTravel wr = case toSing (pos wr) of
+  SomeSing sa -> MkTravel sa $ \(sb :&: _) -> peek (fromSing sb) wr
