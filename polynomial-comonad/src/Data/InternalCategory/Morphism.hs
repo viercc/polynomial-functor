@@ -7,6 +7,7 @@ module Data.InternalCategory.Morphism(
 ) where
 
 import Prelude hiding ((.), id)
+import qualified Data.List
 import Data.Maybe (fromMaybe)
 import Control.Category
 
@@ -36,4 +37,4 @@ composeMorphism' :: (Category cat, SDecide k) => Mor k cat -> Mor k cat -> Mor k
 composeMorphism' f g = fromMaybe (error "Invalid Path") $ composeMorphism f g
 
 instance (Category cat, SDecide k) => ICategory (SomeSing k) (Mor k cat) where
-  foldPath (Path s0 mors _) = foldl' composeMorphism' (identityMorphism s0) mors 
+  foldPath (Path s0 mors _) = Data.List.foldl' composeMorphism' (identityMorphism s0) mors 

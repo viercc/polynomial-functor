@@ -16,6 +16,7 @@ import Data.Functor.Polynomial
 import Data.Functor.Polynomial.Class
 
 import Data.InternalCategory
+import qualified Data.List
 
 data Pos f where
   Position :: Tag f a -> Pos f
@@ -59,7 +60,7 @@ instance (Comonad f, Polynomial f, GEq (Tag f)) => IQuiver (Pos f) (Dir f) where
   tgt = codTag
 
 instance (Comonad f, Polynomial f, GEq (Tag f)) => ICategory (Pos f) (Dir f) where
-  foldPath (Path fstTag directions _) = foldl' step (identityDir fstTag) directions
+  foldPath (Path fstTag directions _) = Data.List.foldl' step (identityDir fstTag) directions
     where
       step dir1 dir2 = case composeDir dir1 dir2 of
         Nothing -> error "Invalid path"
