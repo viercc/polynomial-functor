@@ -45,7 +45,7 @@ library
         Data.GADT.HasFinitary,
         Data.GADT.Compare.Extra
     build-depends: 
-        base >= 4.17 && < 4.21
+        base >= 4.17 && < 4.22
       , finite-typelits
       , finitary >= 2.1.3.0
       , singletons-minibase

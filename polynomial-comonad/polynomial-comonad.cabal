@@ -33,6 +33,7 @@ library
       Control.Monad.Flow,
 
       Data.InternalQuiver,
+      Data.InternalQuiver.Path,
       Data.InternalCategory,
       Data.InternalCategory.Discrete,
       Data.InternalCategory.Codiscrete,
@@ -42,6 +43,7 @@ library
     -- other-extensions:
     build-depends:
       base >=4.18.0.0,
+      auto-lift-classes,
       comonad,
       transformers,
       kan-extensions,

@@ -13,4 +13,8 @@ instance IQuiver a (Disc a) where
   tgt (Disc x) = x
 
 instance Eq a => ICategory a (Disc a) where
+  identity = Disc
+  compose (Disc x) (Disc y)
+    | x == y    = Just (Disc x)
+    | otherwise = Nothing
   foldPath (Path x _ _) = Disc x
