@@ -34,6 +34,7 @@ library
 
       Data.InternalQuiver,
       Data.InternalQuiver.Path,
+      Data.InternalQuiver.Morphism,
       Data.InternalCategory,
       Data.InternalCategory.Discrete,
       Data.InternalCategory.Codiscrete,
