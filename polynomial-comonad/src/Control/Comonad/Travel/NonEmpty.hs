@@ -32,7 +32,6 @@ viewNE as body = case NE.uncons as of
 
 singletonFn :: a -> (forall m. (m :<=: 0) -> a)
 singletonFn a ReflLE = a
-singletonFn _ (SuccLE mn) = zero_neq_succ mn
 
 consFn :: a -> (forall m. (m :<=: n) -> a) -> (forall m. (m :<=: 1 + n) -> a)
 consFn a f mn = case mn of
@@ -50,7 +49,7 @@ fromNonEmpty :: NonEmpty a -> Travel (:>=:) a
 fromNonEmpty as = viewNE as $ \n f -> MkTravel n (\(_ :&: Dual mn) -> f mn)
 
 toNonEmpty :: Travel (:>=:) a -> NonEmpty a
-toNonEmpty (MkTravel n f) = (f . makeKey n) <$> indices n
+toNonEmpty (MkTravel n f) = f . makeKey n <$> indices n
 
 makeKey :: SNat n -> Some ((:>=:) n) -> Sigma Nat (TyCon ((:>=:) n))
 makeKey sn (Some (Dual mn)) = getLower sn mn :&: Dual mn
@@ -58,10 +57,6 @@ makeKey sn (Some (Dual mn)) = getLower sn mn :&: Dual mn
 getLower :: SNat n -> (m :<=: n) -> SNat m
 getLower Zero mn = case mn of
   ReflLE -> Zero
-  SuccLE mn' -> zero_neq_succ mn'
 getLower sn@(Succ sn') mn = case mn of
   ReflLE -> sn
   SuccLE mn' -> getLower sn' mn'
-
-zero_neq_succ :: forall p n a. (0 ~ (1 + n)) => p n -> a
-zero_neq_succ _ = error "impossible!"
