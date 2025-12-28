@@ -21,12 +21,20 @@ import Data.Kind (Type)
 data Mor k (cat :: k -> k -> Type) where
   Morphism :: Sing a -> Sing b -> cat a b -> Mor k cat
 
-instance IQuiver (SomeSing k) (Mor k cat) where
-  src (Morphism sa _ _) = SomeSing sa
-  tgt (Morphism _ sb _) = SomeSing sb
+data SOb k where
+  SOb :: Sing (a :: k) -> SOb k
 
-identityMorphism :: (Category cat) => SomeSing k -> Mor k cat
-identityMorphism (SomeSing sa) = Morphism sa sa id
+instance SDecide k => Eq (SOb k) where
+  SOb sa == SOb sb = case sa %~ sb of
+    Proved _ -> True
+    Disproved _ -> False
+
+instance IQuiver (SOb k) (Mor k cat) where
+  src (Morphism sa _ _) = SOb sa
+  tgt (Morphism _ sb _) = SOb sb
+
+identityMorphism :: (Category cat) => SOb k -> Mor k cat
+identityMorphism (SOb sa) = Morphism sa sa id
 
 composeMorphism :: (Category cat, SDecide k) => Mor k cat -> Mor k cat -> Maybe (Mor k cat)
 composeMorphism (Morphism sa sb f) (Morphism sb' sc g) = case sb %~ sb' of
@@ -36,5 +44,5 @@ composeMorphism (Morphism sa sb f) (Morphism sb' sc g) = case sb %~ sb' of
 composeMorphism' :: (Category cat, SDecide k) => Mor k cat -> Mor k cat -> Mor k cat
 composeMorphism' f g = fromMaybe (error "Invalid Path") $ composeMorphism f g
 
-instance (Category cat, SDecide k) => ICategory (SomeSing k) (Mor k cat) where
+instance (Category cat, SDecide k) => ICategory (SOb k) (Mor k cat) where
   foldPath (Path s0 mors _) = Data.List.foldl' composeMorphism' (identityMorphism s0) mors 
