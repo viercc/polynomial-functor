@@ -5,8 +5,8 @@
 {-# LANGUAGE TypeApplications #-}
 module Main where
 
-import Data.Polynomial.Functor
-import Data.Polynomial.Functor.Deriving
+import Data.Functor.Polynomial.Finitary.Class
+import Data.Functor.Polynomial.Finitary.Deriving
 import GHC.Generics (Generic1, Generically1(..))
 import Data.Foldable (for_)
 import Data.Traversable (mapAccumL)
@@ -17,12 +17,12 @@ import Data.Functor.Compose (Compose(..))
 
 data Example a = Ex (Maybe (Maybe a)) (Maybe (Maybe a))
    deriving stock (Show, Eq, Functor, Foldable, Traversable, Generic1)
-   deriving PolynomialFunctor via (Generically1 Example)
+   deriving FinitaryPolynomial via (Generically1 Example)
    deriving Applicative via (ViaPolynomial Zippy Example)
 
 data Example' a = A a | B a a | C a | D a a a
    deriving stock (Show, Eq, Functor, Foldable, Traversable, Generic1)
-   deriving PolynomialFunctor via (Generically1 Example')
+   deriving FinitaryPolynomial via (Generically1 Example')
    deriving (Applicative, Monad) via (ViaPolynomial Aligney Example')
 
 main :: IO ()

@@ -18,8 +18,9 @@ import GHC.Generics
 import Data.Singletons
 
 import Data.Polynomial
-import Data.Polynomial.Functor
-import Data.Polynomial.Functor.Deriving
+import Data.Functor.Polynomial.Finitary
+import Data.Functor.Polynomial.Finitary.Class
+import Data.Functor.Polynomial.Finitary.Deriving
 
 import Property
 import SemiringProp ( semisemiringProp, semiringProp )
@@ -29,7 +30,7 @@ main :: IO ()
 main = do
   propsPoly
   propsEvCombinators
-  propsPolynomialFunctorIso
+  propsFinitaryPolynomialIso
   propsApplicativeZippy
   propsMonadAligney
 
@@ -38,19 +39,19 @@ main = do
 propsPoly :: IO ()
 propsPoly = do
   putStrLn "CommutativeSemiSemiring Prop"
-  property $ semisemiringProp ([0..3] >>= genPolySized)
+  property $ semisemiringProp ([0..3] >>= genPSized)
   putStrLn "CommutativeSemiring Prop₀"
-  property $ semiringProp ([0..4] >>= genPoly₀Sized)
+  property $ semiringProp ([0..4] >>= genP₀Sized)
 
-genPolySized :: Int -> [Poly]
-genPolySized n
+genPSized :: Int -> [P]
+genPSized n
   | n <= 0 = [U]
-  | otherwise = [S, T] <*> genPolySized (pred n)
+  | otherwise = [S, T] <*> genPSized (pred n)
 
-genPoly₀Sized  :: Int -> [Poly₀]
-genPoly₀Sized n
+genP₀Sized  :: Int -> [P₀]
+genP₀Sized n
   | n <= 0 = [Z]
-  | otherwise = NZ <$> genPolySized (pred n)
+  | otherwise = NZ <$> genPSized (pred n)
 
 ---- * Functors
 
@@ -61,7 +62,7 @@ genEv (SingT sp) as = (:::) <$> as <*> genEv sp as
 
 propsEvCombinators :: IO ()
 propsEvCombinators = do
-  let ps = [0..4] >>= genPolySized
+  let ps = [0..4] >>= genPSized
   property $
     forAll "p" ps $ \p -> withSomeSing p $ \sp ->
       forAll "q" ps $ \q -> withSomeSing q $ \sq -> SemigroupDo.do
@@ -69,26 +70,26 @@ propsEvCombinators = do
         evProductIsomorphism sp sq
         evCompIsomorphism sp sq
 
-evSumIsomorphism :: forall (p :: Poly) (q :: Poly). Sing p -> Sing q -> Result
+evSumIsomorphism :: forall (p :: P) (q :: P). Sing p -> Sing q -> Result
 evSumIsomorphism sp sq =
   label "isIsomorphism toSum fromSum" $
     isIsomorphism (genEv (sp %+ sq)) (sumEnum (genEv sp) (genEv sq)) (toSum sp sq) (fromSum sp sq)
 
-evProductIsomorphism :: forall (p :: Poly) (q :: Poly). Sing p -> Sing q -> Result
+evProductIsomorphism :: forall (p :: P) (q :: P). Sing p -> Sing q -> Result
 evProductIsomorphism sp sq =
   label "isIsomorphism toProduct fromProduct" $
     isIsomorphism (genEv (sp %* sq)) (prodEnum (genEv sp) (genEv sq)) (toProduct sp sq) (fromProduct sp sq)
 
-evCompIsomorphism :: forall (p :: Poly) (q :: Poly). Sing p -> Sing q -> Result
+evCompIsomorphism :: forall (p :: P) (q :: P). Sing p -> Sing q -> Result
 evCompIsomorphism sp sq =
   label "isIsomorphism toComp fromComp" $
     isIsomorphism (genEv (sp %<< sq)) (compEnum (genEv sp) (genEv sq)) (Comp1 . toComp sp sq) (fromComp sp sq . unComp1)
 
--- * Derived PolynomialFunctor isomorphism
+-- * Derived FinitaryPolynomial isomorphism
 
 data Foo a = A a (Maybe a) | B (Maybe a) a
    deriving stock (Show, Eq, Functor, Foldable, Traversable, Generic1)
-   deriving PolynomialFunctor via (Generically1 Foo)
+   deriving FinitaryPolynomial via (Generically1 Foo)
 
 genMaybe :: Enum1 Maybe
 genMaybe as = Nothing : (Just <$> as)
@@ -101,19 +102,19 @@ genFoo as = genA ++ genB
 
 newtype Bar a = MkVar (Foo (Maybe (Foo a)))
    deriving stock (Show, Eq, Functor, Foldable, Traversable, Generic1)
-   deriving PolynomialFunctor via (Generically1 Bar)
+   deriving FinitaryPolynomial via (Generically1 Bar)
 
 genBar :: Enum1 Bar
 genBar as = MkVar <$> genFoo (genMaybe (genFoo as))
 
-propsPolynomialFunctorIso :: IO ()
-propsPolynomialFunctorIso = do
-  putStrLn "PolynomialFunctor Foo"
+propsFinitaryPolynomialIso :: IO ()
+propsFinitaryPolynomialIso = do
+  putStrLn "FinitaryPolynomial Foo"
   putStrLn $ "PolyRep Foo == " ++ show (fromSing (sPolyRep @Foo))
   putStrLn "isIsomorphism toPoly fromPoly"
   property $
     isIsomorphism genFoo (genEv (sPolyRep @Foo)) toPoly fromPoly
-  putStrLn "PolynomialFunctor Bar"
+  putStrLn "FinitaryPolynomial Bar"
   putStrLn $ "PolyRep Bar == " ++ show (fromSing (sPolyRep @Bar))
   property $
     isIsomorphism genBar (genEv (sPolyRep @Bar)) toPoly fromPoly
@@ -123,7 +124,7 @@ propsPolynomialFunctorIso = do
 propsApplicativeZippy :: IO ()
 propsApplicativeZippy = do
   putStrLn "Applicative (Zippy p)"
-  let ps = [0..4] >>= genPolySized
+  let ps = [0..4] >>= genPSized
   property $
     forAll "p" ps $ \p -> withSomeSing p $ \sp ->
       withSingI sp $ propApplicativeLaws (fmap Zippy . genEv sp)
@@ -133,7 +134,7 @@ propsApplicativeZippy = do
 propsMonadAligney :: IO ()
 propsMonadAligney = do
   putStrLn "Applicative (Aligney p)"
-  let ps = [0..3] >>= genPolySized
+  let ps = [0..3] >>= genPSized
   property $
     forAll "p" ps $ \p -> withSomeSing p $ \sp' -> do
       let sp = SingT sp'

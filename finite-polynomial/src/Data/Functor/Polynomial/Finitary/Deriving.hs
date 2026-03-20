@@ -12,10 +12,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE QuantifiedConstraints #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
 
-module Data.Polynomial.Functor.Deriving(
+module Data.Functor.Polynomial.Finitary.Deriving(
   ViaPolynomial(..),
 
   Zippy(..),
@@ -25,24 +24,25 @@ module Data.Polynomial.Functor.Deriving(
 import Data.Kind (Type)
 
 import Data.Singletons
-import Data.Polynomial
 import Control.Monad ((<=<))
 
 import Data.Coerce
 
-import Data.Polynomial.Functor
+import Data.Polynomial
+import Data.Functor.Polynomial.Finitary
+import Data.Functor.Polynomial.Finitary.Class
 
 -- | Generic Deriving
-newtype ViaPolynomial (e :: Poly -> Type -> Type) (f :: Type -> Type) a = ViaPolynomial { unwrapViaPolynomial :: f a }
+newtype ViaPolynomial (e :: P -> Type -> Type) (f :: Type -> Type) a = ViaPolynomial { unwrapViaPolynomial :: f a }
     deriving Functor
 
-instance PolynomialFunctor f => PolynomialFunctor (ViaPolynomial e f) where
+instance FinitaryPolynomial f => FinitaryPolynomial (ViaPolynomial e f) where
     type PolyRep (ViaPolynomial _ f) = PolyRep f
     sPolyRep = sPolyRep @f
     toPoly = toPoly . unwrapViaPolynomial
     fromPoly = ViaPolynomial . fromPoly
 
-instance (PolynomialFunctor f, p ~ PolyRep f, Coercible e Ev, Applicative (e p)) => Applicative (ViaPolynomial e f) where
+instance (FinitaryPolynomial f, p ~ PolyRep f, Coercible e Ev, Applicative (e p)) => Applicative (ViaPolynomial e f) where
     pure :: forall a. a -> ViaPolynomial e f a
     pure = fromPoly . coerce @(e p a) @(Ev p a) . pure
 
@@ -54,7 +54,7 @@ instance (PolynomialFunctor f, p ~ PolyRep f, Coercible e Ev, Applicative (e p))
         coerceBwd :: forall c. e p c -> Ev p c
         coerceBwd = coerce
 
-instance (PolynomialFunctor f, p ~ PolyRep f, Coercible e Ev, Monad (e p)) => Monad (ViaPolynomial e f) where
+instance (FinitaryPolynomial f, p ~ PolyRep f, Coercible e Ev, Monad (e p)) => Monad (ViaPolynomial e f) where
     (>>=) :: forall a b. ViaPolynomial e f a -> (a -> ViaPolynomial e f b) -> ViaPolynomial e f b
     fx >>= k = ViaPolynomial $ fromPoly @f $ coerceBwd $ coerceFwd (toPoly fx) >>= coerceFwd . toPoly . k
       where

@@ -14,7 +14,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 module Data.Polynomial(
   -- * Formal polynomials with natural-number (ℕ) coefficients
-  Poly(..), Poly₀(..),
+  P(..), P₀(..),
   Zero(..), Plus(..), One(..), Times(..),
   evalPoly, evalPoly₀,
   countSummands, polynomialOrder,
@@ -23,7 +23,7 @@ module Data.Polynomial(
   SZero(..), SPlus(..), SOne(..), STimes(..),
   SId(..), SCompose(..),
 
-  SPoly(..), SPoly₀(..),
+  SingP(..), SingP₀(..),
   
   EvalPoly, sEvalPoly,
   EvalPoly₀, sEvalPoly₀
@@ -38,7 +38,7 @@ import Data.Kind (Type)
 -- * Formal polynomials with natural-number (ℕ) coefficients
 
 -- | A __nonzero__ formal polynomial with natural-number coefficient. If we write @{p}@ for the
---   meaning of @p :: Poly@ as a polynomial, the following holds:
+--   meaning of @p :: P@ as a polynomial, the following holds:
 --
 -- @
 -- {U}(x) = 1
@@ -48,12 +48,12 @@ import Data.Kind (Type)
 -- 
 -- In other words:
 -- 
--- * @U :: Poly@ represents a constant polynomial @{U}(x) = 1@
--- * @S p :: Poly@ represents 1 plus the polynomial @{p}@.
--- * @T p :: Poly@ represents @{p}@ multiplied by the parameter of the polynomial.
+-- * @U :: P@ represents a constant polynomial @{U}(x) = 1@
+-- * @S p :: P@ represents 1 plus the polynomial @{p}@.
+-- * @T p :: P@ represents @{p}@ multiplied by the parameter of the polynomial.
 -- 
--- Any __nonzero__ polynomial with coefficients in ℕ can be represented using 'Poly'.
--- In fact, they are /uniquely/ represented as a 'Poly' value.
+-- Any __nonzero__ polynomial with coefficients in ℕ can be represented using 'P'.
+-- In fact, they are /uniquely/ represented as a 'P' value.
 -- For example, @1 + x^2 + x^3@ is uniquely represented as @S (T (T (S (T U))))@.
 --
 -- @
@@ -66,16 +66,16 @@ import Data.Kind (Type)
 --   = 1 + x * x * (1 + x * 1)
 --   = 1 + x^2 + x^3
 -- @
-data Poly = U | S Poly | T Poly
+data P = U | S P | T P
     deriving (Show, Eq, Ord)
 
--- | 'Poly₀' is either zero or a 'Poly'.
+-- | 'P₀' is either zero or a 'P'.
 --
 -- @
 -- {Z}(x) = 0
 -- {NZ p}(x) = {p}(x)
 -- @
-data Poly₀ = Z | NZ Poly
+data P₀ = Z | NZ P
     deriving (Show, Eq, Ord)
 
 -- * Semiring
@@ -103,19 +103,19 @@ class Times a where
     default times :: Num a => a -> a -> a
     times = (*)
 
-evalPoly :: (Plus a, One a, Times a) => Poly -> a -> a
+evalPoly :: (Plus a, One a, Times a) => P -> a -> a
 evalPoly U = const one
 evalPoly (S p) = \a -> one `plus` evalPoly p a
 evalPoly (T p) = \a -> a `times` evalPoly p a
 
-evalPoly₀ :: (Zero a, Plus a, One a, Times a) => Poly₀ -> a -> a
+evalPoly₀ :: (Zero a, Plus a, One a, Times a) => P₀ -> a -> a
 evalPoly₀ Z = const zero
 evalPoly₀ (NZ p) = evalPoly p
 
-countSummands :: Poly₀ -> Int
+countSummands :: P₀ -> Int
 countSummands p = evalPoly₀ p 1
 
-polynomialOrder :: Poly -> Int
+polynomialOrder :: P -> Int
 polynomialOrder p = getMax $ evalPoly p (Max 1)
 
 instance Zero Int
@@ -143,35 +143,35 @@ instance (Ord a, Num a) => One (Max a) where
 instance (Ord a, Num a) => Times (Max a) where
     times (Max x) (Max y) = Max (x + y)
 
-instance Plus Poly where
+instance Plus P where
     plus U y = S y
     plus (S x) y = S (plus x y)
     plus (T x) U = S (T x)
     plus (T x) (S y) = S (plus (T x) y)
     plus (T x) (T y) = T (plus x y)
 
-instance One Poly where
+instance One P where
     one = U
 
-instance Times Poly where
+instance Times P where
     times U y = y
     times (S x) U = S x
     times (S x) (S y) = S (plus (plus x y) (times x y))
     times (S x) (T y) = T (times (S x) y)
     times (T x) y = T (times x y)
 
-instance Zero Poly₀ where
+instance Zero P₀ where
     zero = Z
 
-instance Plus Poly₀ where
+instance Plus P₀ where
     plus Z y = y
     plus (NZ x) Z = NZ x
     plus (NZ x) (NZ y) = NZ (plus x y)
 
-instance One Poly₀ where
+instance One P₀ where
     one = NZ one
 
-instance Times Poly₀ where
+instance Times P₀ where
     times Z _ = Z
     times (NZ _) Z = Z
     times (NZ x) (NZ y) = NZ (times x y)
@@ -179,16 +179,16 @@ instance Times Poly₀ where
 
 -- * Singletons
 
-data SPoly a where
-    SingU :: SPoly 'U
-    SingS :: SPoly p -> SPoly ('S p)
-    SingT :: SPoly p -> SPoly ('T p)
+data SingP a where
+    SingU :: SingP 'U
+    SingS :: SingP p -> SingP ('S p)
+    SingT :: SingP p -> SingP ('T p)
 
-type instance Sing = SPoly
-deriving instance Show (SPoly p)
+type instance Sing = SingP
+deriving instance Show (SingP p)
 
-instance SingKind Poly where
-    type Demote Poly = Poly
+instance SingKind P where
+    type Demote P = P
 
     fromSing SingU = U
     fromSing (SingS p) = S (fromSing p)
@@ -202,15 +202,15 @@ instance SingI 'U where sing = SingU
 instance SingI p => SingI ('S p) where sing = SingS sing
 instance SingI p => SingI ('T p) where sing = SingT sing
 
-data SPoly₀ a where
-    SingZ :: SPoly₀ 'Z
-    SingNZ :: SPoly p -> SPoly₀ ('NZ p)
+data SingP₀ a where
+    SingZ :: SingP₀ 'Z
+    SingNZ :: SingP p -> SingP₀ ('NZ p)
 
-type instance Sing = SPoly₀
-deriving instance Show (SPoly₀ p)
+type instance Sing = SingP₀
+deriving instance Show (SingP₀ p)
 
-instance SingKind Poly₀ where
-    type Demote Poly₀ = Poly₀
+instance SingKind P₀ where
+    type Demote P₀ = P₀
 
     fromSing SingZ = Z
     fromSing (SingNZ p) = NZ (fromSing p)
@@ -257,18 +257,18 @@ class SCompose (k :: Type) where
 
 
 
-instance SZero Poly₀ where
-    type TZero Poly₀ = 'Z
+instance SZero P₀ where
+    type TZero P₀ = 'Z
     sZero = SingZ
 
-type family PlusPoly (x :: Poly) (y :: Poly) :: Poly where
+type family PlusPoly (x :: P) (y :: P) :: P where
     PlusPoly U y = S y
     PlusPoly (S x) y = S (PlusPoly x y)
     PlusPoly (T x) U = S (T x)
     PlusPoly (T x) (S y) = S (PlusPoly (T x) y)
     PlusPoly (T x) (T y) = T (PlusPoly x y)
 
-instance SPlus Poly where
+instance SPlus P where
     type x + y = PlusPoly x y
 
     SingU %+ y = SingS y
@@ -278,12 +278,12 @@ instance SPlus Poly where
         SingS y' -> SingS (SingT x %+ y')
         SingT y' -> SingT (x %+ y')
 
-type family PlusPoly₀ x y :: Poly₀ where
+type family PlusPoly₀ x y :: P₀ where
     PlusPoly₀ Z y = y
     PlusPoly₀ (NZ x) Z = NZ x
     PlusPoly₀ (NZ x) (NZ y) = NZ (PlusPoly x y)
 
-instance SPlus Poly₀ where
+instance SPlus P₀ where
     type x + y = PlusPoly₀ x y
 
     SingZ %+ y = y
@@ -291,27 +291,27 @@ instance SPlus Poly₀ where
     SingNZ x %+ SingNZ y = SingNZ (x %+ y)
 
 
-instance SOne Poly where
-    type TOne Poly = 'U
+instance SOne P where
+    type TOne P = 'U
     sOne = SingU
 
-instance SOne Poly₀ where
-    type TOne Poly₀ = 'NZ 'U
+instance SOne P₀ where
+    type TOne P₀ = 'NZ 'U
     sOne = SingNZ sOne
 
-type family TimesPoly x y :: Poly where
+type family TimesPoly x y :: P where
     TimesPoly U y = y
     TimesPoly (S x) U = S x
     TimesPoly (S x) (S y) = S ((x + y) + TimesPoly x y)
     TimesPoly (S x) (T y) = T (TimesPoly (S x) y)
     TimesPoly (T x) y = T (TimesPoly x y)
 
-type family TimesPoly₀ x y :: Poly₀ where
+type family TimesPoly₀ x y :: P₀ where
     TimesPoly₀ Z _ = Z
     TimesPoly₀ (NZ _) Z = Z
     TimesPoly₀ (NZ x) (NZ y) = NZ (TimesPoly x y)
 
-instance STimes Poly where
+instance STimes P where
     type x * y = TimesPoly x y
     SingU %* y = y
     SingS x %* SingU = SingS x
@@ -319,44 +319,44 @@ instance STimes Poly where
     SingS x %* SingT y = SingT (SingS x %* y)
     SingT x %* y = SingT (x %* y)
 
-instance STimes Poly₀ where
+instance STimes P₀ where
     type x * y = TimesPoly₀ x y
     SingZ %* _ = SingZ
     SingNZ _ %* SingZ = SingZ
     SingNZ x %* SingNZ y = SingNZ (x %* y)
 
-instance SId Poly where
-    type TId Poly = 'S 'U
+instance SId P where
+    type TId P = 'S 'U
     sId = SingS SingU
 
-instance SId Poly₀ where
-    type TId Poly₀ = 'NZ ('S 'U)
+instance SId P₀ where
+    type TId P₀ = 'NZ ('S 'U)
     sId = SingNZ sId
 
-type family ComposePoly (x :: Poly) (y :: Poly) where
+type family ComposePoly (x :: P) (y :: P) where
     ComposePoly U _ = U
     ComposePoly (S x) y = S (ComposePoly x y)
     ComposePoly (T x) y = TimesPoly y (ComposePoly x y)
 
-type family ConstantPart' (x :: Poly) where
+type family ConstantPart' (x :: P) where
     ConstantPart' U = S U
     ConstantPart' (S x) = S (ConstantPart' x)
     ConstantPart' (T _) = U
 
-type family ComposePoly₀ (x :: Poly₀) (y :: Poly₀) where
+type family ComposePoly₀ (x :: P₀) (y :: P₀) where
     ComposePoly₀ Z _ = Z
     ComposePoly₀ (NZ U) Z = NZ U
     ComposePoly₀ (NZ (S x)) Z = NZ (ConstantPart' x)
     ComposePoly₀ (NZ (T _)) Z = Z
     ComposePoly₀ (NZ x) (NZ y) = NZ (ComposePoly x y)
 
-instance SCompose Poly where
+instance SCompose P where
     type x << y = ComposePoly x y
     SingU %<< _ = SingU
     SingS x %<< y = SingS (x %<< y)
     SingT x %<< y = y %* (x %<< y)
 
-instance SCompose Poly₀ where
+instance SCompose P₀ where
     type x << y = ComposePoly₀ x y
 
     SingZ %<< _ = SingZ
@@ -365,25 +365,25 @@ instance SCompose Poly₀ where
     SingNZ (SingT _) %<< SingZ = SingZ
     SingNZ x %<< SingNZ y = SingNZ (x %<< y)
 
-sConstantPart :: SPoly x -> SPoly (ConstantPart' x)
+sConstantPart :: SingP x -> SingP (ConstantPart' x)
 sConstantPart SingU = SingS SingU
 sConstantPart (SingS x) = SingS (sConstantPart x)
 sConstantPart (SingT _) = SingU
 
-type family EvalPoly (x :: Poly) k (arg :: k) :: k where
+type family EvalPoly (x :: P) k (arg :: k) :: k where
     EvalPoly U k _ = TOne k
     EvalPoly (S p) k arg = TOne k + EvalPoly p k arg
     EvalPoly (T p) k arg = arg * EvalPoly p k arg
 
-sEvalPoly :: (SOne k, SPlus k, STimes k) => SPoly x -> Sing arg -> Sing (EvalPoly x k arg)
+sEvalPoly :: (SOne k, SPlus k, STimes k) => SingP x -> Sing arg -> Sing (EvalPoly x k arg)
 sEvalPoly SingU _ = sOne
 sEvalPoly (SingS p) arg = sOne %+ sEvalPoly p arg
 sEvalPoly (SingT p) arg = arg %* sEvalPoly p arg
 
-type family EvalPoly₀ (x :: Poly₀) k (arg :: k) :: k where
+type family EvalPoly₀ (x :: P₀) k (arg :: k) :: k where
     EvalPoly₀ Z k _ = TZero k
     EvalPoly₀ (NZ p) k arg = EvalPoly p k arg
 
-sEvalPoly₀ :: (SZero k, SOne k, SPlus k, STimes k) => SPoly₀ x -> Sing arg -> Sing (EvalPoly₀ x k arg)
+sEvalPoly₀ :: (SZero k, SOne k, SPlus k, STimes k) => SingP₀ x -> Sing arg -> Sing (EvalPoly₀ x k arg)
 sEvalPoly₀ SingZ _ = sZero
 sEvalPoly₀ (SingNZ p) arg = sEvalPoly p arg

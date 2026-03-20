@@ -19,12 +19,18 @@ library
 
     exposed-modules:
       Data.Polynomial,
-      Data.Polynomial.Functor,
-      Data.Polynomial.Functor.Deriving
+      Data.Functor.Polynomial.Finitary,
+      Data.Functor.Polynomial.Finitary.Class,
+      Data.Functor.Polynomial.Finitary.Deriving,
+      Data.Functor.Polynomial.Finitary.Tag,
     
     build-depends:
       base >=4.18.1.0,
-      singletons >= 3.0.2
+      singletons >= 3.0,
+      some,
+      finitary >= 2.1.3.0,
+      finite-typelits,
+      polynomial-functor
 
     hs-source-dirs:   src
 
