@@ -501,7 +501,7 @@ tr (M (y :&: g) <> M (x :&: f))
        M (y' :&: g') = tr (M (y :&: g))
       (qy' :&: qg') = q o' x' (y' :&: g')
    in M (qy' :&: qg' . f')
- = tr (M (x :&: f)) <> tr (M (y :&: g))
+ = tr (M (y :&: g)) <> tr (M (x :&: f))
 
 [tr does not change action on X]
 
