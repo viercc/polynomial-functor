@@ -1,6 +1,14 @@
 packages: */*.cabal
 
+source-repository-package
+    type: git
+    location: https://github.com/viercc/acts-fd.git
+    -- v0.2
+    tag: 94fc7b4a6af53553a72318da9ad832efc1f2fe5a
+
 package *
-    haddock-hyperlink-source: True
     documentation: True
-    haddock-html-location: http://hackage.haskell.org/packages/archive/$pkg/$version/doc/html
+    haddock-html: True
+    haddock-hyperlink-source: True
+
+haddock-html-location: http://hackage.haskell.org/packages/archive/$pkg/$version/doc/html
