@@ -119,7 +119,7 @@ f  | ↦ |
 theta :: (Comonad w, Q cat) => Dist w (Travel cat)
 theta wa = case extract wa of
   MkTravel x0 _ ->
-    MkTravel x0 \m -> wa <&> \(MkTravel x1 h) -> h (q x0 x1 m) 
+    MkTravel x0 \m -> wa <&> \(MkTravel x1 h) -> h (q x0 x1 m)
 
 extractQ :: forall k (cat :: k -> k -> Type).
      (Category cat, SDecide k)
@@ -391,159 +391,43 @@ ffa <<&>> g = fmap (fmap g) ffa
 
 -- * @Q cat@ implies cat is isomorphic to action category
 
-data Mor cat where
-  Mor :: Sing x -> Sing x' -> cat x x' -> Mor cat
-  MorId :: Mor cat
+newtype M cat o = M (Dir cat o)
 
-  {-
-  `MorId` represent equivalence class of
-  identity element of the monoid (which should exist if `k` is
-  inhabited). This is needed because "`k` is inhabited" is somewhat
-  tricky to represent as constraint, especially without making arbitrary choice
-  for `x0 :: k`.
+compDir :: Category cat => Dir cat b -> cat a b -> Dir cat a
+compDir (y :&: g) f = y :&: g . f
 
-  This monoid does not depend on the chocie of `x0`, thus it is more natural
-  to avoid arbitrary choice to begin with.
-  -}
-
--- | Externally, @Mor cat@ must be abstract type which can only be
---   accessed through @mor@, @morAt@
-mor :: Sing x -> Sing x' -> cat x x' -> Mor cat
-mor = Mor
-
-morAt :: Q cat => Mor cat -> Sing x -> Dir cat x
-morAt MorId x = q x x (x :&: id)
-morAt (Mor y y' f) x = q y x (y' :&: f)
-
-instance (Q cat, SDecide k, forall z z'. Eq (cat z z')) => Eq (Mor (cat :: k -> k -> Type)) where
-  MorId == MorId = True
-  MorId == Mor x x' f = Mor x x id == Mor x x' f
-  Mor x x' f == MorId = Mor x x' f == Mor x x id
-  Mor x x' f == Mor y y' g =
-    case q x y (x' :&: f) of
-      (qx' :&: qf) -> case qx' %~ y' of
-        Proved Refl -> qf == g
-        Disproved _ -> False
-
-{-
-
-(==) is an (indicator function of an) equivalence relation. Note that
-
-  (Mor x x' f == Mor y y' g) = True
-
-iff
-
-  q x y (x' :&: f) = (y' :&: g)
-
-.
-
-[Reflexivity]:
-
-  (Mor x x' f == Mor x x' f) = True) ⇔ q x x (x' :&: f) = (x' :&: f)
-  and it is immediate by (Q2).
-
-[Symmetry]
-
-  Suppose (Mor x x' f == Mor y y' g) i.e.
-
-    q x y (x' :&: f) = (y' :&: g)
-  
-  . Then
-
-    q y x (y' :&: g) = q y x (q x y (x' :&: f)) = q x x (x' :&: f) = (x' :&: f)
-  
-  .
-
-[Transitivity]
-
-  Suppose (Mor x x' f == Mor y y' g) && (Mor y y' g == Mor z z' h).
-  Then
-
-  q x z (x' :&: f)
-     -- (Q4)
-   = q y z (q x y (x' :&: f))
-     -- (assumption)
-   = q y z (y' :&: g)
-     -- (assumption)
-   = (z' :&: h)
-
--}
-
-instance (Q cat) => Semigroup (Mor cat) where
-  --  x -- [ g <> f ] --> qy
+instance (Q cat, SingI o) => Semigroup (M cat o) where
+  --  o -- [ g <> f ] --> qy
   --
+  --   def
   --   ===
   --
-  --  x --[f]--> x' --[qg]--> qy'
-  --                   ↑
-  --                   ↑ q
-  --                   ↑
-  --              y --[g]--> y'
-  MorId <> m = m
-  m <> MorId = m
-  Mor y y' g <> Mor x x' f =
-    case q y x' (y' :&: g) of
-      (qy :&: qg) -> Mor x qy (qg . f)
-
+  --  o --[f]--> x --[qg]--> qy
+  --                  ↑
+  --                  ↑ q
+  --                  ↑
+  --             o --[g]--> y
+  M dir <> M (x :&: f) = M $ q sing x dir `compDir` f
 
   -- Associativity is evident from diagrams
 
-instance (Q cat) => Monoid (Mor cat) where
-  mempty = MorId
+instance (Q cat, SingI o) => Monoid (M cat o) where
+  mempty = M (sing :&: id)
 
-{-
+data X (cat :: k -> k -> Type) (o :: k) where
+  X :: Sing (a :: k) -> X (cat :: k -> k -> Type) (o :: k)
 
-Monoid instance is well-defined w.r.t. (==).
+codDir :: Dir cat a -> X cat b
+codDir (x :&: _) = X x
 
-Suppose
-
-(Mor x1 x1' f1 == Mor x2 x2' f2)
-(Mor y1 y1' g1 == Mor y2 y2' g2)
-
-Then
-
-Mor z1 z1' h1 = Mor y1 y1' g1 <> Mor x1 x1' f1
- = Mor x1 qy1 (qg1 . f1) where (qy1 :&: qg1) = q y1 x1' (y1' :&: g1)
-
-Mor z2 z2' h2 = Mor y2 y2' g2 <> Mor x2 x2' f2
- = Mor x2 qy2 (qg2 . f2) where (qy2 :&: qg2) = q y2 x2' (y2' :&: g2)
-
-(Mor z1 z1' h1 == Mor z2 z2' h2)
- ⇔ q z1 z2 (z1' :&: h1) = (z2' :&: h2)
-
-q z1 z2 (z1' :&: h1)
- = q x1 x2 (qy1 :&: (qg1 . f1))
- -- (Q3)
- = let (qx1' :&: qf1)
-          = q x1 x2 (x1' :&: f1)
-          = (x2' :&: f2) -- By property of (==)
-       (qqy1 :&: qqg1) = q x1' qx1' (qy1 :&: qg1)
-          = q x1' qx1' (q y1 x1' (y1' :&: g1))
-            -- (Q4)
-          = q y1 qx1' (y1' :&: g1)
-   in (qqy1 :&: (qqg1 . qf1))
- = let (qqy1 :&: qqg1) = q y1 x2' (y1' :&: g1)
-          = q y2 x2' (q y1 y2 (y1' :&: g1))
-            -- By property of (==)
-          = q y2 x2' (y2' :&: g2)
-   in (qqy1 :&: (qqg1 . qf1))
- = (z2' :&: h2)
-
--}
-
-data X (cat :: k -> k -> Type) where
-  X :: Sing (a :: k) -> X (cat :: k -> k -> Type)
-
-instance (Q cat) => Action (Mor cat) (X cat) where
-  act MorId x = x
-  act (Mor y y' f) (X x) = case q y x (y' :&: f) of
-    (x' :&: _) -> X x'
+instance (Q cat, SingI o) => Action (M cat o) (X cat o) where
+  act (M (y :&: f)) (X x) = codDir $ q sing x (y :&: f)
 
   {-
   
-  y --[f]-> y'
+  o --[f]-> y
       ↓ q
-  x ------> act (Mor y y' f) x
+  x ------> act (M (y :&: f)) x
   
   -}
 
@@ -551,26 +435,83 @@ instance (Q cat) => Action (Mor cat) (X cat) where
 
 Laws check:
 
-           z  --[g]---> z'
-                 ↓q
-y --[f]--> y' --[qg]--> qz'
+           o --[g]---> z
+                ↓q
+o --[f]--> y --[qg]--> qz
            ↓∘
-y --------------------> qz'
+o -------------------> qz
            ↓q
-x --------------------> act (Mor z z' g <> Mor y y' f) x
+o --------------------> act (M (z :&: g) <> M (y :&: f)) x
 
 ========================================
 
-let x' = Act (Mor y y' f) x
-    x'' = Act (Mor z z' g) x'
+let x' = Act (M (y :&: f)) x
+    x'' = Act (Mor (z :&: g)) x'
 
-           z  --[g]---> z'
+           o  --[g]---> z
                  ↓q
-y --[f]--> y' --[qg]--> qz'
+o --[f]--> y --[qg]--> qz
     ↓q          ↓q
 x -------> x' --------> x''
 
 -}
 
-travelToAct :: Q cat => Travel cat r -> Act (Mor cat) (X cat) r
-travelToAct (MkTravel x k) = Act (X x) (\m -> k $ morAt m x)
+travelToAct :: (Q cat, SingI o) => Travel cat r -> Act (M cat o) (X cat o) r
+travelToAct (MkTravel x k) = Act (X x) (\(M dir0) -> k $ q sing x dir0)
+
+actToTravel :: (Q cat, SingI o) => Act (M cat o) (X cat o) r -> Travel cat r
+actToTravel (Act (X x) k) = MkTravel x (k . M . q x sing)
+
+-- Choice of the origin does not affect M, X
+
+translateM :: (Q cat) => Sing o -> Sing o' -> M cat o -> M cat o'
+translateM o o' (M dir) = M (q o o' dir)
+
+translateX :: X cat o -> X cat o'
+translateX (X x) = X x
+
+{-
+
+o, o' :: k
+tr = translateM o o' :: M cat o -> M cat o'
+
+[tr is monoid isomorphism]
+
+Because `q o o'` is an invertible function (`q o' o` is the inverse),
+it is sufficient to show `tr` preserve unit and multiplication.
+
+tr mempty = tr (M (o :&: id)) = M (q o o' (o :&: id))
+ = M (o' :&: id) = mempty
+
+tr (M (y :&: g) <> M (x :&: f))
+ = let (qy :&: qg) = q o x (y :&: g)
+   in tr $ M (qy :&: qg . f)
+ = let (qy :&: qg) = q o x (y :&: g)
+   in M $ q o o' (qy :&: qg . f)
+ = let (qy :&: qg) = q o x (y :&: g)
+       (x' :&: f') = q o o' (x :&: f)
+       (qy' :&: qg') = q x x' (qy :&: qg)
+   in M (qy' :&: qg' . f')
+ = let (x' :&: f') = q o o' (x :&: f)
+       (qy' :&: qg') = q x x' (q o x (y :&: g))
+                     = q o x' (y :&: g)
+                     = q o' x' (q o o' (y :&: g))
+   in M (qy' :&: qg' . f')
+ = let M (x' :&: f') = tr (M (x :&: f))
+       M (y' :&: g') = tr (M (y :&: g))
+      (qy' :&: qg') = q o' x' (y' :&: g')
+   in M (qy' :&: qg' . f')
+ = tr (M (x :&: f)) <> tr (M (y :&: g))
+
+[tr does not change action on X]
+
+translateX $ act (M (y :&: g) (X x))
+  = translateX $ codDir $ q o x (y :&: g)
+  = codDir $ q o x (y :&: g)
+
+act (tr (M (y :&: g)))) (translateX (X x))
+  = act (M $ q o o' (y :&: g)) (X x)
+  = codDir $ q o' x (q o o' (y :&: g))
+  = codDir $ q o x (y :&: g)
+
+-}
